@@ -32,7 +32,6 @@ public:
   using Kernel<equation>::stopTimer;                            //!< Stop timer for given event
   using Kernel<equation>::X0;                                   //!< Center of root cell
   using Kernel<equation>::R0;                                   //!< Radius of root cell
-  using Evaluator<equation>::NCRIT;                             //!< Number of particles per leaf
 
 private:
 //! Nodes are primitive cells

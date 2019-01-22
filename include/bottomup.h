@@ -33,7 +33,6 @@ public:
   using Kernel<equation>::sortBodies;                           //!< Sort bodies according to cell index
   using Kernel<equation>::X0;                                   //!< Center of root cell
   using Kernel<equation>::R0;                                   //!< Radius of root cell
-  using Evaluator<equation>::NCRIT;                             //!< Number of particles per leaf
   using TreeStructure<equation>::buffer;                        //!< Buffer for MPI communication & sorting
   using TreeStructure<equation>::getLevel;                      //!< Get level from cell index
 

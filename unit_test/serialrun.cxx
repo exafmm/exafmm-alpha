@@ -1,4 +1,4 @@
-Sdown/*
+/*
 Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,7 +34,6 @@ int main(int, char ** argv) {
   Cells cells, jcells;                                          // Define vector of cells
   SerialFMM<Laplace> FMM;                                       // Instantiate SerialFMM class
   FMM.initialize();                                             // Initialize FMM
-  FMM.NCRIT = atoi(argv[2]);
   FMM.printNow = true;                                          // Print timer
 
   FMM.startTimer("Set bodies");                                 // Start timer

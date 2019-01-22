@@ -32,7 +32,6 @@ int main(int, char ** argv) {
   Cells cells, jcells;                                          // Define vector of cells
   SerialFMM<Laplace> FMM;                                       // Instantiate SerialFMM class
   FMM.initialize();                                             // Initialize FMM
-  FMM.NCRIT = atoi(argv[2]);
 
   for( int it=0; it<33; ++it ) {                                // Loop over FMM iterations
     int numBodies = int(pow(10,(it+24)/8.0));                   //  Exponentially increase N
