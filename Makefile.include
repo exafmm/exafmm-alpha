@@ -28,7 +28,7 @@ CXX	= mpicxx -ggdb3 -Wall -Wextra -O3 -ffast-math -funroll-loops -fforce-addr -f
 #CXX	= mpiFCCpx -Kfast,openmp
 ### CUDA compiler
 NVCC    = nvcc -Xcompiler -fopenmp --ptxas-options=-v -O3\
-	 -use_fast_math -arch=sm_35 -I../include -I$(CUDA_INSTALL_PATH)/include
+	 -use_fast_math -arch=sm_60 -I../include -I$(CUDA_INSTALL_PATH)/include
 
 ### Base flags
 LFLAGS  = -D$(DEVICE) -D$(EXPAND)
@@ -50,11 +50,14 @@ LFLAGS  += -DEXPANSION=10
 ifeq ($(DEVICE),GPU)
 ### CUDA flags
 LFLAGS  += -DQUEUE -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
-endif
-
+SOURCE = ../kernel/$(DEVICE)$(EXPAND)Laplace.cu ../kernel/$(DEVICE)VanDerWaals.cu
+OBJECT = $(SOURCE:.cu=.o)
+else
 SOURCE = ../kernel/$(DEVICE)$(EXPAND)Laplace.cxx ../kernel/$(DEVICE)VanDerWaals.cxx\
 	../kernel/CPUP2P.cxx
 OBJECT = $(SOURCE:.cxx=.o)
+endif
+
 
 .cxx.o  :
 	$(CXX) -c $? -o $@ $(LFLAGS)

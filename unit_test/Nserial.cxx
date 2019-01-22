@@ -27,7 +27,7 @@ THE SOFTWARE.
 int main(int, char ** argv) {
   int numTarget = 100;                                          // Number of target points to be used for error eval
   IMAGES = 0;                                                   // Level of periodic image tree (0 for non-periodic)
-  THETA = atof(argv[1]);                                        // Multipole acceptance criteria
+  THETA = 1/sqrtf(4);                                           // Multipole acceptance criteria
   Bodies bodies, jbodies;                                       // Define vector of bodies
   Cells cells, jcells;                                          // Define vector of cells
   SerialFMM<Laplace> FMM;                                       // Instantiate SerialFMM class

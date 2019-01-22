@@ -156,13 +156,11 @@ void Evaluator<equation>::getTargetCell(Lists &lists, bool isM) {// Get body val
       int begin = targetBegin[Ci];                              //   Offset of target coefs
       if( isM ) {                                               //   If target is M
         for( int i=0; i!=NTERM; ++i ) {                         //    Loop over coefs in target cell
-          Ci->M[i].real() += targetHost[begin+2*i+0];           //     Copy real target values from GPU buffer
-          Ci->M[i].imag() += targetHost[begin+2*i+1];           //     Copy imaginary target values from GPU buffer
+          Ci->M[i] += complex(targetHost[begin+2*i+0],targetHost[begin+2*i+1]);// Copy values from GPU buffer
         }                                                       //    End loop over coefs
       } else {                                                  //   If target is L
         for( int i=0; i!=NTERM; ++i ) {                         //    Loop over coefs in target cell
-          Ci->L[i].real() += targetHost[begin+2*i+0];           //     Copy real target values from GPU buffer
-          Ci->L[i].imag() += targetHost[begin+2*i+1];           //     Copy imaginary target values from GPU buffer
+          Ci->L[i] += complex(targetHost[begin+2*i+0],targetHost[begin+2*i+1]);// Copy values from GPU buffer
         }                                                       //    End loop over coefs
       }                                                         //   Endif for target type
       lists[Ci-Ci0].clear();                                    //   Clear interaction list

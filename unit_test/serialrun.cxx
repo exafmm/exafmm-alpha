@@ -24,11 +24,11 @@ THE SOFTWARE.
 #include "vtk.h"
 #endif
 
-int main(int, char ** argv) {
+int main() {
   const int numBodies = 10000;                                  // Number of bodies
   const int numTarget = 100;                                    // Number of target points to be used for error eval
   IMAGES = 0;                                                   // Level of periodic image tree (0 for non-periodic)
-  THETA = atof(argv[1]);                                        // Multipole acceptance criteria
+  THETA = 1/sqrtf(4);                                           // Multipole acceptance criteria
   Bodies bodies(numBodies);                                     // Define vector of bodies
   Bodies jbodies;                                               // Define vector of source bodies
   Cells cells, jcells;                                          // Define vector of cells
