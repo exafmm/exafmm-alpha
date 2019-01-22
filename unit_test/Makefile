@@ -11,7 +11,7 @@ bottomup: construct.cxx $(OBJECT)
 	$(CXX) $? $(LFLAGS) $(VFLAGS)
 	$(SERIALRUN)
 
-kernel: kernel2.cxx $(SOURCE)
+kernel: kernel.cxx $(SOURCE)
 	$(CXX) $? $(LFLAGS)
 	$(SERIALRUN)
 

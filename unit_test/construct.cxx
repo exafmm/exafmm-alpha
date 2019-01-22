@@ -32,6 +32,7 @@ int main() {
   Cells cells;                                                  // Define vector of cells
   SerialFMM<Laplace> FMM;                                       // Instantiate SerialFMM class
   FMM.initialize();                                             // Initialize FMM
+  FMM.NCRIT = 64;
   FMM.printNow = true;                                          // Print timings
 
   FMM.startTimer("Set bodies");                                 // Start timer
