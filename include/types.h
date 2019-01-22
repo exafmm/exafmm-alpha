@@ -40,30 +40,23 @@ THE SOFTWARE.
 #include <queue>
 #include <stack>
 #include <string>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 #include "vec.h"                                                //!< My vector type with operator overloading
-#include <xmmintrin.h>
+//#include <xmmintrin.h>
 #if PAPI
 #include <papi.h>
 #endif
 #if QUARK
 #include "quark.h"
-#endif
-#if MTHREADS
-#include <mttb/task_group.h>
-int omp_get_thread_num() {
-  return 0;
-}
-#define OMP_NUM_THREADS 1
 #else
 #include <omp.h>
-#define OMP_NUM_THREADS 12
 #endif
 
 typedef unsigned           bigint;                              //!< Big integer type
-typedef float              real;                                //!< Real number type on CPU
-typedef float              gpureal;                             //!< Real number type on GPU
+typedef double             real;                                //!< Real number type on CPU
+typedef double             gpureal;                             //!< Real number type on GPU
 typedef std::complex<real> complex;                             //!< Complex number type
 typedef vec<3,real>        vect;                                //!< 3-D vector type
 
@@ -90,18 +83,16 @@ extern int PAPIEVENT;                                           //!< PAPI event 
 #endif
 #endif
 
-const int  P        = 10;                                       //!< Order of expansions
-const int  NCRIT    = 100;                                      //!< Number of bodies per cell
-const int  MAXBODY  = 200000;                                   //!< Maximum number of bodies per GPU kernel
+const int  P        = EXPANSION;                                //!< Order of expansions
+const int  MAXBODY  = 50000;                                    //!< Maximum number of bodies per GPU kernel
 const int  MAXCELL  = 10000000;                                 //!< Maximum number of bodies/coefs in cell per GPU kernel
 const real CLET     = 2;                                        //!< LET opening critetia
-const real EPS      = 1e-6;                                     //!< Single precision epsilon
+const real EPS      = 1e-15;                                    //!< Single/double precision epsilon
 const real EPS2     = 0;                                        //!< Softening parameter (squared)
-const real R2MIN    = 0.25;                                     //!< Minimum value for L-J R^2
-const real R2MAX    = 64;                                       //!< Maximum value for L-J R^2
-const int  GPUS     = 3;                                        //!< Number of GPUs per node
+const real R2MIN    = 0.0001;                                   //!< Minimum value for L-J R^2
+const real R2MAX    = 100.0;                                    //!< Maximum value for L-J R^2
+const int  GPUS     = 1;                                        //!< Number of GPUs per node
 const int  THREADS  = 64;                                       //!< Number of threads per thread-block
-const int  PTHREADS = 4;                                        //!< Number of pthreads in quark
 
 const int MTERM = P*(P+1)*(P+2)/6;                              //!< Number of Cartesian mutlipole terms
 const int LTERM = (P+1)*(P+2)*(P+3)/6;                          //!< Number of Cartesian local terms

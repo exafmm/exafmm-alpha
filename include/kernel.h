@@ -132,7 +132,7 @@ protected:
     real fact = 1;                                              // Initialize 2 * m + 1
     real pn = 1;                                                // Initialize Legendre polynomial Pn
     real rhom = 1.0 / rho;                                      // Initialize rho^(-m-1)
-    for( int m=0; m!=2*P; ++m ) {                               // Loop over m in Ynm
+    for( int m=0; m!=P; ++m ) {                                 // Loop over m in Ynm
       complex eim = std::exp(I * real(m * beta));               //  exp(i * m * beta)
       real p = pn;                                              //  Associated Legendre polynomial Pnm
       int npn = m * m + 2 * m;                                  //  Index of Ynm for m > 0
@@ -144,7 +144,7 @@ protected:
       YnmTheta[npn] = rhom * (p - (m + 1) * x * p1) / y * prefactor[npn] * eim;// theta derivative of r^n * Ynm
       rhom /= rho;                                              //  rho^(-m-1)
       real rhon = rhom;                                         //  rho^(-n-1)
-      for( int n=m+1; n!=2*P; ++n ) {                           //  Loop over n in Ynm
+      for( int n=m+1; n!=P; ++n ) {                             //  Loop over n in Ynm
         int npm = n * n + n + m;                                //   Index of Ynm for m > 0
         int nmm = n * n + n - m;                                //   Index of Ynm for m < 0
         Ynm[npm] = rhon * p * prefactor[npm] * eim;             //   rho^n * Ynm for m > 0
@@ -169,7 +169,7 @@ public:
                  sourceDevcSize(0), targetDevcSize(0),
                  keysDevc(), rangeDevc(), sourceDevc(), targetDevc(),
                  factorial(), prefactor(), Anm(), Cnm(),
-                 X0(0), R0(0) {}
+                 X0(0), R0(-1/EPS) {}
 //! Destructor
   ~KernelBase() {}
 //! Copy constructor
@@ -180,7 +180,7 @@ public:
                  sourceDevcSize(0), targetDevcSize(0),
                  keysDevc(), rangeDevc(), sourceDevc(), targetDevc(),
                  factorial(), prefactor(), Anm(), Cnm(),
-                 X0(0), R0(0) {}
+                 X0(0), R0(-1/EPS) {}
 //! Overload assignment
   KernelBase &operator=(const KernelBase) {return *this;}
 
@@ -197,41 +197,42 @@ public:
 //! Set center and size of root cell
   void setDomain(Bodies &bodies, vect x0=0, real r0=M_PI) {
     vect xmin,xmax;                                             // Min,Max of domain
-    B_iter B = bodies.begin();                                  // Reset body iterator
-    xmin = xmax = B->X;                                         // Initialize xmin,xmax
-    for( B=bodies.begin(); B!=bodies.end(); ++B ) {             // Loop over bodies
+    for( int d=0; d!=3; ++d ) {                                 //  Loop over each dimension
+      xmin[d] = x0[d] - r0;                                     //   Initialize xmin
+      xmax[d] = x0[d] + r0;                                     //   Initialize xmax
+    }                                                           //  End loop over each dimension
+    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {      // Loop over bodies
       for( int d=0; d!=3; ++d ) {                               //  Loop over each dimension
         if     (B->X[d] < xmin[d]) xmin[d] = B->X[d];           //   Determine xmin
         else if(B->X[d] > xmax[d]) xmax[d] = B->X[d];           //   Determine xmax
       }                                                         //  End loop over each dimension
     }                                                           // End loop over bodies
-    if( IMAGES != 0 ) {                                         // If periodic boundary condition
+    if( IMAGES != 0 ) {                                         // If periodic boundary
       if( xmin[0] < x0[0]-r0 || x0[0]+r0 < xmax[0]              //  Check for outliers in x direction
        || xmin[1] < x0[1]-r0 || x0[1]+r0 < xmax[1]              //  Check for outliers in y direction
        || xmin[2] < x0[2]-r0 || x0[2]+r0 < xmax[2] ) {          //  Check for outliers in z direction
         std::cout << "Error: Particles located outside periodic domain : " << std::endl;// Print error message
-        std::cout << xmin << std::endl;
-        std::cout << xmax << std::endl;
+        std::cout << xmin << std::endl;                         //   Print error message
+        std::cout << xmax << std::endl;                         //   Print error message
       }                                                         //  End if for outlier checking
-      X0 = x0;                                                  //  Center is [0, 0, 0]
+      X0 = x0;                                                  //  Center is x0
       R0 = r0;                                                  //  Radius is r0
-    } else {
-      for( int d=0; d!=3; ++d ) {                               // Loop over each dimension
-        X0[d] = (xmax[d] + xmin[d]) / 2;                        // Calculate center of domain
-        X0[d] = int(X0[d]+.5);                                  //  Shift center to nearest integer
-        R0 = std::max(xmax[d] - X0[d], R0);                     //  Calculate max distance from center
-        R0 = std::max(X0[d] - xmin[d], R0);                     //  Calculate max distance from center
-      }                                                         // End loop over each dimension
-      R0 *= 1.000001;                                           // Add some leeway to root radius
-    }                                                           // Endif for periodic boundary condition
+    } else {                                                    // If free boundary
+      for( int d=0; d!=3; ++d ) {                               //  Loop over each dimension
+        X0[d] = (xmin[d] + xmax[d]) * .5;                       //   Center of domain
+        R0 = std::max(X0[d]-xmin[d],R0);                        //   Radius of domain
+        R0 = std::max(xmax[d]-X0[d],R0);                        //   Radius of domain
+      }                                                         //  End loop over each dimension
+      R0 *= (1 + EPS);                                          //  Add some leeway to domain size
+    }                                                           // End if for periodic boundary
   }
 
 //! Precalculate M2L translation matrix
   void preCalculation() {
     const complex I(0.,1.);                                     // Imaginary unit
     factorial = new real  [P];                                  // Factorial
-    prefactor = new real  [4*P*P];                              // sqrt( (n - |m|)! / (n + |m|)! )
-    Anm       = new real  [4*P*P];                              // (-1)^n / sqrt( (n + m)! / (n - m)! )
+    prefactor = new real  [P*P];                                // sqrt( (n - |m|)! / (n + |m|)! )
+    Anm       = new real  [P*P];                                // (-1)^n / sqrt( (n + m)! / (n - m)! )
     Cnm       = new complex [P*P*P*P];                          // M2L translation matrix Cjknm
 
     factorial[0] = 1;                                           // Initialize factorial
@@ -239,7 +240,7 @@ public:
       factorial[n] = factorial[n-1] * n;                        //  n!
     }                                                           // End loop to P
 
-    for( int n=0; n!=2*P; ++n ) {                               // Loop over n in Anm
+    for( int n=0; n!=P; ++n ) {                                 // Loop over n in Anm
       for( int m=-n; m<=n; ++m ) {                              //  Loop over m in Anm
         int nm = n*n+n+m;                                       //   Index of Anm
         int nabsm = abs(m);                                     //   |m|
@@ -279,7 +280,7 @@ public:
 
 //! Set paramters for Van der Waals
   void setVanDerWaals(int atoms, double *rscale, double *gscale) {
-    assert(atoms <= 16);                                        // Change GPU constant memory alloc if needed
+//    assert(atoms <= 16);                                        // Change GPU constant memory alloc if needed
     THETA = .1;                                                 // Force opening angle to be small
     ATOMS = atoms;                                              // Set number of atom types
     RSCALE.resize(ATOMS*ATOMS);                                 // Resize rscale vector

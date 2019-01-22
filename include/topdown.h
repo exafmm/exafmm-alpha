@@ -32,6 +32,7 @@ public:
   using Kernel<equation>::stopTimer;                            //!< Stop timer for given event
   using Kernel<equation>::X0;                                   //!< Center of root cell
   using Kernel<equation>::R0;                                   //!< Radius of root cell
+  using Evaluator<equation>::NCRIT;                             //!< Number of particles per leaf
 
 private:
 //! Nodes are primitive cells
@@ -41,7 +42,7 @@ private:
     int NLEAF;                                                  //!< Number of leafs in node
     bigint I;                                                   //!< Cell index
     bigint CHILD[8];                                            //!< Iterator offset of child nodes
-    B_iter LEAF[NCRIT];                                         //!< Iterator for leafs
+    B_iter LEAF[10000];                                         //!< Iterator for leafs
     vect X;                                                     //!< Node center
     real R;                                                     //!< Node radius
   };

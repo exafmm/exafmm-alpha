@@ -9,7 +9,6 @@ cleanlib:
 cleanall:
 	make clean
 	make cleandat
-	make cleanlib
 commit  :
 	hg commit
 	hg push
@@ -20,9 +19,3 @@ save    :
 revert	:
 	hg revert --all
 	rm -rf `find . -name "*.orig"`
-docs:
-	doxygen Doxyfile
-	cd docs/html; tar zcf ../../docs.tgz *
-	scp docs.tgz pl:
-	ssh pl 'tar -zxf docs.tgz -C /Library/WebServer/Documents/exafmm_docs/html/; rm docs.tgz; chmod -R 775 /Library/WebServer/Documents/exafmm_docs/'
-	rm -rf docs*

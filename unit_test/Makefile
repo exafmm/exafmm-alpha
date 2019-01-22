@@ -11,9 +11,14 @@ bottomup: construct.cxx $(OBJECT)
 	$(CXX) $? $(LFLAGS) $(VFLAGS)
 	$(SERIALRUN)
 
-kernel: kernel.cxx $(OBJECT)
+kernel: kernel2.cxx $(SOURCE)
 	$(CXX) $? $(LFLAGS)
 	$(SERIALRUN)
+
+convergence: kernel.cxx $(SOURCE)
+	for P in 3 4 5 6 7 8 9 10 11 12 13 14 15; do echo P = $$P compiling && \
+        $(CXX) $? $(LFLAGS) -DEXPANSION=$$P && \
+        echo P = $$P executing && $(SERIALRUN); done
 
 ewald_direct: ewald_direct.cxx $(OBJECT)
 	$(CXX) $? $(LFLAGS)
@@ -25,10 +30,9 @@ ewald_fmm: ewald_fmm.cxx $(OBJECT)
 
 serialrun: serialrun.cxx $(OBJECT)
 	$(CXX) $? $(LFLAGS) $(VFLAGS)
-	$(SERIALRUN)
 
 unsort: unsort.cxx $(OBJECT)
-	$(CXX) $? $(LFLAGS) $(VFLAGS) -DTOPDOWN
+	$(CXX) $? $(LFLAGS) $(VFLAGS)
 	$(SERIALRUN)
 
 ijserialrun: ijserialrun.cxx $(OBJECT)
@@ -37,7 +41,6 @@ ijserialrun: ijserialrun.cxx $(OBJECT)
 
 Nserial: Nserial.cxx $(OBJECT)
 	$(CXX) $? $(LFLAGS)
-	$(SERIALRUN)
 
 direct_gpu: direct_gpu.cxx $(OBJECT)
 	$(CXX) $? $(LFLAGS)

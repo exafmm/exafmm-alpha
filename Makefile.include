@@ -3,7 +3,6 @@
 
 ### CUDA path
 CUDA_INSTALL_PATH = /usr/local/cuda
-CUDA_SDK_PATH = /usr/local/cuda_sdk/C
 
 ### VTK path
 VTK_INCLUDE_PATH = /usr/include/vtk-5.8
@@ -18,24 +17,22 @@ DEVICE  = CPU
 EXPAND  = Spherical
 
 ### GCC compiler
-CXX	= mpicxx -ggdb3 -Wall -Wextra -Wshadow -Wuninitialized -O3 -ffast-math -fopenmp -funroll-loops -fforce-addr -fPIC -I../include
-
+CXX	= mpicxx -ggdb3 -Wall -Wextra -O3 -ffast-math -funroll-loops -fforce-addr -fPIC -I../include
 ### Intel compiler
 #CXX	= mpicxx -Wall -xHOST -O3 -openmp -funroll-loops -finline-functions -fPIC -ansi-alias -I../include
-
+### PGI compiler
+#CXX	= CC -O3 -I../include
 ### BG/P compiler
 #CXX	= mpixlcxx -qarch=450 -qtune=450 -I../include
-
 ### K computer
-#CXX	= mpiFCCpx -Kopenmp,fast,ocl,preex,array_private -Ksimd=2,NOFLTLD,mfunc=3,optmsg=2 -Nsrc,sta -I../include -DNDEBUG
-# -Kdalign,ns,mfunc,eval,prefetch_conditional,ilfunc -x-
-
+#CXX	= mpiFCCpx -Kfast,openmp
 ### CUDA compiler
-NVCC    = nvcc --compiler-bindir=/usr/bin/g++-4.4 -Xcompiler -fopenmp --ptxas-options=-v -O3\
-	 -use_fast_math -arch=sm_21 -I../include -I$(CUDA_INSTALL_PATH)/include -I$(CUDA_SDK_PATH)/common/inc
+NVCC    = nvcc -Xcompiler -fopenmp --ptxas-options=-v -O3\
+	 -use_fast_math -arch=sm_35 -I../include -I$(CUDA_INSTALL_PATH)/include
 
 ### Base flags
 LFLAGS  = -D$(DEVICE) -D$(EXPAND)
+LFLAGS  += -DEXPANSION=10
 
 ### PAPI flags
 #LFLAGS += -DPAPI -lpapi
@@ -52,11 +49,12 @@ LFLAGS  = -D$(DEVICE) -D$(EXPAND)
 
 ifeq ($(DEVICE),GPU)
 ### CUDA flags
-LFLAGS  += -DQUEUE -L$(CUDA_INSTALL_PATH)/lib64 -L$(CUDA_SDK_PATH)/lib -lcuda -lcudart -lcutil_x86_64 -lstdc++ -ldl -lm
+LFLAGS  += -DQUEUE -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
 endif
 
-OBJECT = ../kernel/$(DEVICE)$(EXPAND)Laplace.o ../kernel/$(DEVICE)VanDerWaals.o\
-	../kernel/CPUP2P.o
+SOURCE = ../kernel/$(DEVICE)$(EXPAND)Laplace.cxx ../kernel/$(DEVICE)VanDerWaals.cxx\
+	../kernel/CPUP2P.cxx
+OBJECT = $(SOURCE:.cxx=.o)
 
 .cxx.o  :
 	$(CXX) -c $? -o $@ $(LFLAGS)
