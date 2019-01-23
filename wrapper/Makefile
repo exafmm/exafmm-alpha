@@ -1,4 +1,4 @@
-include ../Makefile
+include ../Makefile.include
 
 serial: serial.o $(OBJECT)
 	$(CXX) $? $(LFLAGS)
@@ -23,3 +23,6 @@ lib_parallel: parallel_wrapper.o $(OBJECT)
 test_parallel: test_parallel.o
 	$(FC) $? $(LFLAGS) -L. -lfmm
 	mpirun -np 2 ./a.out
+
+clean:
+	make -C .. clean
