@@ -1,38 +1,9 @@
-/*
-Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 #ifndef topdown_h
 #define topdown_h
 #include "tree.h"
 
 //! Topdown tree constructor class
-template<Equation equation>
-class TopDown : public TreeStructure<equation> {
-public:
-  using Kernel<equation>::printNow;                             //!< Switch to print timings
-  using Kernel<equation>::startTimer;                           //!< Start timer for given event
-  using Kernel<equation>::stopTimer;                            //!< Stop timer for given event
-  using Kernel<equation>::X0;                                   //!< Center of root cell
-  using Kernel<equation>::R0;                                   //!< Radius of root cell
-
+class TopDown : virtual public TreeStructure {
 private:
 //! Nodes are primitive cells
   struct Node {
@@ -41,7 +12,7 @@ private:
     int NLEAF;                                                  //!< Number of leafs in node
     bigint I;                                                   //!< Cell index
     bigint CHILD[8];                                            //!< Iterator offset of child nodes
-    B_iter LEAF[10000];                                         //!< Iterator for leafs
+    B_iter LEAF[NCRIT];                                         //!< Iterator for leafs
     vect X;                                                     //!< Node center
     real R;                                                     //!< Node radius
   };
@@ -98,7 +69,7 @@ private:
   }
 
 //! Traverse tree
-  void traverse(typename std::vector<Node>::iterator N) {
+  void traverse(std::vector<Node>::iterator N) {
     if( N->NLEAF >= NCRIT ) {                                   // If node has children
       for( int i=0; i!=8; ++i ) {                               // Loop over children
         if( N->ICHILD & (1 << i) ) {                            //  If child exists in this octant
@@ -113,9 +84,14 @@ private:
   }
 
 public:
+//! Constructor
+  TopDown() : TreeStructure() {}
+//! Destructor
+  ~TopDown() {}
+
 //! Grow tree from root
   void grow(Bodies &bodies) {
-    startTimer("Grow tree");                                    // Start timer
+    startTimer("Grow tree    ");                                // Start timer
     int octant;                                                 // In which octant is the body located?
     Node node;                                                  // Node structure
     node.LEVEL = node.NLEAF = node.ICHILD = node.I = 0;         // Initialize root node counters
@@ -137,14 +113,14 @@ public:
         splitNode(i);                                           //   Split the node into smaller ones
       }                                                         //  Endif for splitting
     }                                                           // End loop over bodies
-    stopTimer("Grow tree",printNow);                            // Stop timer
+    stopTimer("Grow tree    ",printNow);                        // Stop timer
   }
 
 //! Store cell index of all bodies
   void setIndex() {
-    startTimer("Set index");                                    // Start timer
+    startTimer("Set index    ");                                // Start timer
     traverse(nodes.begin());                                    // Traverse tree
-    stopTimer("Set index",printNow);                            // Stop timer 
+    stopTimer("Set index    ",printNow);                        // Stop timer 
   }
 };
 

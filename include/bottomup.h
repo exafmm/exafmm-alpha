@@ -1,48 +1,13 @@
-/*
-Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 #ifndef bottomup_h
 #define bottomup_h
-#include "topdown.h"
 
 //! Bottomup tree constructor
-template<Equation equation>
-class BottomUp : public TopDown<equation> {
-public:
-  using Kernel<equation>::printNow;                             //!< Switch to print timings
-  using Kernel<equation>::startTimer;                           //!< Start timer for given event
-  using Kernel<equation>::stopTimer;                            //!< Stop timer for given event
-  using Kernel<equation>::sortBodies;                           //!< Sort bodies according to cell index
-  using Kernel<equation>::X0;                                   //!< Center of root cell
-  using Kernel<equation>::R0;                                   //!< Radius of root cell
-  using TreeStructure<equation>::buffer;                        //!< Buffer for MPI communication & sorting
-  using TreeStructure<equation>::getLevel;                      //!< Get level from cell index
-
+class BottomUp : virtual public TreeStructure {
 protected:
-//! Max level for bottom up tree build
-  int getMaxLevel(Bodies &bodies) {
+  int getMaxLevel(Bodies &bodies) {                             // Max level for bottom up tree build
     const long N = bodies.size() * MPISIZE;                     // Number of bodies
     int level;                                                  // Max level
     level = N >= NCRIT ? 1 + int(log(N / NCRIT)/M_LN2/3) : 0;   // Decide max level from N/Ncrit
-    if( level < 2 ) level = 2;
     int MPIlevel = int(log(MPISIZE-1) / M_LN2 / 3) + 1;         // Level of local root cell
     if( MPISIZE == 1 ) MPIlevel = 0;                            // For serial execution local root cell is root cell
     if( MPIlevel > level ) {                                    // If process hierarchy is deeper than tree
@@ -53,9 +18,14 @@ protected:
   }
 
 public:
+//! Constructor
+  BottomUp() : TreeStructure() {}
+//! Destructor
+  ~BottomUp() {}
+
 //! Set cell index of all bodies
   void setIndex(Bodies &bodies, int level=-1, int begin=0, int end=0, bool update=false) {
-    startTimer("Set index");                                    // Start timer
+    startTimer("Set index    ");                                // Start timer
     bigint i;                                                   // Levelwise cell index
     if( level == -1 ) level = getMaxLevel(bodies);              // Decide max level
     bigint off = ((1 << 3*level) - 1) / 7;                      // Offset for each level
@@ -79,12 +49,12 @@ public:
         bodies[b].ICELL = i+off;                                //   Store index in bodies
       }                                                         //  Endif for update
     }                                                           // End loop over bodies
-    stopTimer("Set index",printNow);                            // Stop timer
+    stopTimer("Set index    ",printNow);                        // Stop timer
   }
 
 //! Prune tree by merging cells
   void prune(Bodies &bodies) {
-    startTimer("Prune tree");                                   // Start timer
+    startTimer("Prune tree   ");                                // Start timer
     int maxLevel = getMaxLevel(bodies);                         // Max level for bottom up tree build
     for( int l=maxLevel; l>0; --l ) {                           // Loop upwards from bottom level
       int level = getLevel(bodies[0].ICELL);                    //  Current level
@@ -116,7 +86,7 @@ public:
         }                                                       //   End loop over bodies in cell
       }                                                         //  Endif for merging
     }                                                           // End loop over levels
-    stopTimer("Prune tree",printNow);                           // Stop timer
+    stopTimer("Prune tree   ",printNow);                        // Stop timer
   }
 
 //! Grow tree by splitting cells

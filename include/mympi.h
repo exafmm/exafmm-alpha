@@ -1,48 +1,21 @@
-/*
-Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 #ifndef mympi_h
 #define mympi_h
 #include <mpi.h>
 #include <typeinfo>
 #include "types.h"
-#include <unistd.h>
 
 //! Custom MPI utilities
 class MyMPI {
-private:
-  int       EXTERNAL;                                           //!< Flag to indicate external MPI_Init/Finalize
-
 protected:
+  const int WAIT;                                               //!< Waiting time between output of different ranks
   int       MPISIZES;                                           //!< Number of MPI processes for split communicator
   int       MPIRANKS;                                           //!< Rank of current MPI process for split communicator
-  const int WAIT;                                               //!< Waiting time between output of different ranks
-
 public:
 //! Constructor, initialize WAIT time
-  MyMPI() : EXTERNAL(0), MPISIZES(0), MPIRANKS(0), WAIT(100) {  // Constructor, initialize WAIT time
+  MyMPI() : WAIT(100) {                                         // Constructor, initialize WAIT time
     int argc(0);                                                // Dummy argument count
     char **argv;                                                // Dummy argument value
-    MPI_Initialized(&EXTERNAL);                                 // Check if MPI_Init has been called
-    if(!EXTERNAL) MPI_Init(&argc,&argv);                        // Initialize MPI communicator
+    MPI_Init(&argc,&argv);                                      // Initialize MPI communicator
     MPI_Comm_size(MPI_COMM_WORLD,&MPISIZE);                     // Get number of MPI processes
     MPI_Comm_rank(MPI_COMM_WORLD,&MPIRANK);                     // Get rank of current MPI process
     DEVICE = MPIRANK % GPUS;                                    // Get GPU device ID from MPI rank
@@ -50,7 +23,7 @@ public:
 
 //! Destructor
   ~MyMPI() {
-    if(!EXTERNAL) MPI_Finalize();                               // Finalize MPI communicator
+    MPI_Finalize();                                             // Finalize MPI communicator
   }
 
 //! If n is power of two return true
@@ -143,7 +116,7 @@ public:
     }                                                           // End loop over ranks
   }
 
-//! Print a vector value on irank
+//! // Print a vector value on irank
   template<typename T>
   void print(T *data, const int begin, const int end, const int irank) {
     MPI_Barrier(MPI_COMM_WORLD);                                // Sync processes

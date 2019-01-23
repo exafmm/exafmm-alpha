@@ -1,119 +1,107 @@
-/*
-Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 #ifndef kernel_h
 #define kernel_h
+#define KERNEL
 #include "sort.h"
+#undef KERNEL
 #define ODDEVEN(n) ((((n) & 1) == 1) ? -1 : 1)
 
+const int  P2 = P * P;                                          //!< P^2
+const int  P4 = P2 * P2;                                        //!< P^4
+const real EPS = 1e-6;                                          //!< Single precision epsilon
+
 //! Unified CPU/GPU kernel class
-class KernelBase : public Sort {
+class Kernel : public Sort {
 protected:
-  C_iter               Ci0;                                     //!< Begin iterator for target cells
-  C_iter               Cj0;                                     //!< Begin iterator for source cells
+  B_iter      BI0;                                              //!< Target bodies begin iterator
+  B_iter      BIN;                                              //!< Target bodies end iterator
+  B_iter      BJ0;                                              //!< Source bodies begin iterator
+  B_iter      BJN;                                              //!< Source bodies end iterator
+  C_iter      CI;                                               //!< Target cell iterator
+  C_iter      CJ;                                               //!< Source cell iterator
+  vect        X0;                                               //!< Center of root cell
+  real        R0;                                               //!< Radius of root cell
+  vect        Xperiodic;                                        //!< Coordinate offset of periodic image
+  KernelName  kernelName;                                       //!< Name of kernel
 
   int                  ATOMS;                                   //!< Number of atom types in Van der Waals
   std::vector<real>    RSCALE;                                  //!< Scaling parameter for Van der Waals
   std::vector<real>    GSCALE;                                  //!< Scaling parameter for Van der Waals
-  real                 KSIZE;                                   //!< Number of waves in Ewald summation
-  real                 ALPHA;                                   //!< Scaling parameter for Ewald summation
-  real                 SIGMA;                                   //!< Scaling parameter for Ewald summation
 
   std::vector<int>     keysHost;                                //!< Offsets for rangeHost
   std::vector<int>     rangeHost;                               //!< Offsets for sourceHost
+  std::vector<gpureal> constHost;                               //!< Constants on host
   std::vector<gpureal> sourceHost;                              //!< Sources on host
   std::vector<gpureal> targetHost;                              //!< Targets on host
-  std::vector<gpureal> constHost;                               //!< Constants on host
   Map                  sourceBegin;                             //!< Define map for offset of source cells
   Map                  sourceSize;                              //!< Define map for size of source cells
   Map                  targetBegin;                             //!< Define map for offset of target cells
-  size_t               keysDevcSize;                            //!< Size of offsets for rangeDevc
-  size_t               rangeDevcSize;                           //!< Size of offsets for sourceDevc
-  size_t               sourceDevcSize;                          //!< Size of sources on device
-  size_t               targetDevcSize;                          //!< Size of targets on device
-  int                 *keysDevc;                                //!< Offsets for rangeDevc
-  int                 *rangeDevc;                               //!< Offsets for sourceDevc
-  gpureal             *sourceDevc;                              //!< Sources on device
-  gpureal             *targetDevc;                              //!< Targets on device
 
-  real *factorial;                                              //!< Factorial
-  real *prefactor;                                              //!< \f$ \sqrt{ \frac{(n - |m|)!}{(n + |m|)!} } \f$
-  real *Anm;                                                    //!< \f$ (-1)^n / \sqrt{ \frac{(n + m)!}{(n - m)!} } \f$
+  double *factorial;                                            //!< Factorial
+  double *prefactor;                                            //!< \f$ \sqrt{ \frac{(n - |m|)!}{(n + |m|)!} } \f$
+  double *Anm;                                                  //!< \f$ (-1)^n / \sqrt{ \frac{(n + m)!}{(n - m)!} } \f$
+  complex *Ynm;                                                 //!< \f$ r^n Y_n^m \f$
+  complex *YnmTheta;                                            //!< \f$ \theta \f$ derivative of \f$ r^n Y_n^m \f$
   complex *Cnm;                                                 //!< M2L translation matrix \f$ C_{jn}^{km} \f$
 public:
-  vect X0;                                                      //!< Center of root cell
-  real R0;                                                      //!< Radius of root cell
+  real NP2P;                                                    //!< Number of P2P kernel call
+  real NM2P;                                                    //!< Number of M2P kernel call
+  real NM2L;                                                    //!< Number of M2L kernel call
 
 private:
-  real getBmax(vect const&X, C_iter C) const {
-    real rad = C->R;
-    real dx = rad+std::abs(X[0]-C->X[0]);
-    real dy = rad+std::abs(X[1]-C->X[1]);
-    real dz = rad+std::abs(X[2]-C->X[2]);
-    return std::sqrt( dx*dx + dy*dy + dz*dz );
+//! Get r,theta,phi from x,y,z
+  void cart2sph(real& r, real& theta, real& phi, vect dist) {
+    r = std::sqrt(norm(dist))+EPS;                              // r = sqrt(x^2 + y^2 + z^2) + eps
+    theta = std::acos(dist[2] / r);                             // theta = acos(z / r)
+    if( std::abs(dist[0]) + std::abs(dist[1]) < EPS ) {         // If |x| < eps & |y| < eps
+      phi = 0;                                                  //  phi can be anything so we set it to 0
+    } else if( std::abs(dist[0]) < EPS ) {                      // If |x| < eps
+      phi = dist[1] / std::abs(dist[1]) * M_PI * 0.5;           //  phi = sign(y) * pi / 2
+    } else if( dist[0] > 0 ) {                                  // If x > 0
+      phi = std::atan(dist[1] / dist[0]);                       //  phi = atan(y / x)
+    } else {                                                    // If x < 0
+      phi = std::atan(dist[1] / dist[0]) + M_PI;                //  phi = atan(y / x) + pi
+    }                                                           // End if for x,y cases
   }
 
-protected:
-  void setCenter(C_iter C) const {
-    real m = 0;
-    vect X = 0;
-    for( B_iter B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
-      m += std::abs(B->SRC);
-      X += B->X * std::abs(B->SRC);
-    }
-    for( C_iter c=Cj0+C->CHILD; c!=Cj0+C->CHILD+C->NCHILD; ++c ) {
-      m += std::abs(c->M[0]);
-      X += c->X * std::abs(c->M[0]);
-    }
-    X /= m;
-    C->R = getBmax(X,C);
-    C->X = X;
+//! Spherical to cartesian coordinates
+  template<typename T>
+  void sph2cart(real r, real theta, real phi, T spherical, T &cartesian) {
+    cartesian[0] = sin(theta) * cos(phi) * spherical[0]         // x component (not x itself)
+                 + cos(theta) * cos(phi) / r * spherical[1]
+                 - sin(phi) / r / sin(theta) * spherical[2];
+    cartesian[1] = sin(theta) * sin(phi) * spherical[0]         // y component (not y itself)
+                 + cos(theta) * sin(phi) / r * spherical[1]
+                 + cos(phi) / r / sin(theta) * spherical[2];
+    cartesian[2] = cos(theta) * spherical[0]                    // z component (not z itself)
+                 - sin(theta) / r * spherical[1];
   }
 
 //! Evaluate solid harmonics \f$ r^n Y_{n}^{m} \f$
-  void evalMultipole(real rho, real alpha, real beta, complex *Ynm, complex *YnmTheta) const {
+  void evalMultipole(real rho, real alpha, real beta) {
     const complex I(0.,1.);                                     // Imaginary unit
-    real x = std::cos(alpha);                                   // x = cos(alpha)
-    real y = std::sin(alpha);                                   // y = sin(alpha)
-    real fact = 1;                                              // Initialize 2 * m + 1
-    real pn = 1;                                                // Initialize Legendre polynomial Pn
-    real rhom = 1;                                              // Initialize rho^m
+    double x = std::cos(alpha);                                 // x = cos(alpha)
+    double y = std::sin(alpha);                                 // y = sin(alpha)
+    double fact = 1;                                            // Initialize 2 * m + 1
+    double pn = 1;                                              // Initialize Legendre polynomial Pn
+    double rhom = 1;                                            // Initialize rho^m
     for( int m=0; m!=P; ++m ) {                                 // Loop over m in Ynm
-      complex eim = std::exp(I * real(m * beta));               //  exp(i * m * beta)
-      real p = pn;                                              //  Associated Legendre polynomial Pnm
+      complex eim = std::exp(I * double(m * beta));             //  exp(i * m * beta)
+      double p = pn;                                            //  Associated Legendre polynomial Pnm
       int npn = m * m + 2 * m;                                  //  Index of Ynm for m > 0
       int nmn = m * m;                                          //  Index of Ynm for m < 0
       Ynm[npn] = rhom * p * prefactor[npn] * eim;               //  rho^m * Ynm for m > 0
       Ynm[nmn] = std::conj(Ynm[npn]);                           //  Use conjugate relation for m < 0
-      real p1 = p;                                              //  Pnm-1
+      double p1 = p;                                            //  Pnm-1
       p = x * (2 * m + 1) * p1;                                 //  Pnm using recurrence relation
       YnmTheta[npn] = rhom * (p - (m + 1) * x * p1) / y * prefactor[npn] * eim;// theta derivative of r^n * Ynm
       rhom *= rho;                                              //  rho^m
-      real rhon = rhom;                                         //  rho^n
+      double rhon = rhom;                                       //  rho^n
       for( int n=m+1; n!=P; ++n ) {                             //  Loop over n in Ynm
         int npm = n * n + n + m;                                //   Index of Ynm for m > 0
         int nmm = n * n + n - m;                                //   Index of Ynm for m < 0
         Ynm[npm] = rhon * p * prefactor[npm] * eim;             //   rho^n * Ynm
         Ynm[nmm] = std::conj(Ynm[npm]);                         //   Use conjugate relation for m < 0
-        real p2 = p1;                                           //   Pnm-2
+        double p2 = p1;                                         //   Pnm-2
         p1 = p;                                                 //   Pnm-1
         p = (x * (2 * n + 1) * p1 - (n + m) * p2) / (n - m + 1);//   Pnm using recurrence relation
         YnmTheta[npm] = rhon * ((n - m + 1) * p - (n + 1) * x * p1) / y * prefactor[npm] * eim;// theta derivative
@@ -125,31 +113,31 @@ protected:
   }
 
 //! Evaluate singular harmonics \f$ r^{-n-1} Y_n^m \f$
-  void evalLocal(real rho, real alpha, real beta, complex *Ynm, complex *YnmTheta) const {
+  void evalLocal(real rho, real alpha, real beta) {
     const complex I(0.,1.);                                     // Imaginary unit
-    real x = std::cos(alpha);                                   // x = cos(alpha)
-    real y = std::sin(alpha);                                   // y = sin(alpha)
-    real fact = 1;                                              // Initialize 2 * m + 1
-    real pn = 1;                                                // Initialize Legendre polynomial Pn
-    real rhom = 1.0 / rho;                                      // Initialize rho^(-m-1)
-    for( int m=0; m!=P; ++m ) {                                 // Loop over m in Ynm
-      complex eim = std::exp(I * real(m * beta));               //  exp(i * m * beta)
-      real p = pn;                                              //  Associated Legendre polynomial Pnm
+    double x = std::cos(alpha);                                 // x = cos(alpha)
+    double y = std::sin(alpha);                                 // y = sin(alpha)
+    double fact = 1;                                            // Initialize 2 * m + 1
+    double pn = 1;                                              // Initialize Legendre polynomial Pn
+    double rhom = 1.0 / rho;                                    // Initialize rho^(-m-1)
+    for( int m=0; m!=2*P; ++m ) {                               // Loop over m in Ynm
+      complex eim = std::exp(I * double(m * beta));             //  exp(i * m * beta)
+      double p = pn;                                            //  Associated Legendre polynomial Pnm
       int npn = m * m + 2 * m;                                  //  Index of Ynm for m > 0
       int nmn = m * m;                                          //  Index of Ynm for m < 0
       Ynm[npn] = rhom * p * prefactor[npn] * eim;               //  rho^(-m-1) * Ynm for m > 0
       Ynm[nmn] = std::conj(Ynm[npn]);                           //  Use conjugate relation for m < 0
-      real p1 = p;                                              //  Pnm-1
+      double p1 = p;                                            //  Pnm-1
       p = x * (2 * m + 1) * p1;                                 //  Pnm using recurrence relation
       YnmTheta[npn] = rhom * (p - (m + 1) * x * p1) / y * prefactor[npn] * eim;// theta derivative of r^n * Ynm
       rhom /= rho;                                              //  rho^(-m-1)
-      real rhon = rhom;                                         //  rho^(-n-1)
-      for( int n=m+1; n!=P; ++n ) {                             //  Loop over n in Ynm
+      double rhon = rhom;                                       //  rho^(-n-1)
+      for( int n=m+1; n!=2*P; ++n ) {                           //  Loop over n in Ynm
         int npm = n * n + n + m;                                //   Index of Ynm for m > 0
         int nmm = n * n + n - m;                                //   Index of Ynm for m < 0
         Ynm[npm] = rhon * p * prefactor[npm] * eim;             //   rho^n * Ynm for m > 0
         Ynm[nmm] = std::conj(Ynm[npm]);                         //   Use conjugate relation for m < 0
-        real p2 = p1;                                           //   Pnm-2
+        double p2 = p1;                                         //   Pnm-2
         p1 = p;                                                 //   Pnm-1
         p = (x * (2 * n + 1) * p1 - (n + m) * p2) / (n - m + 1);//   Pnm using recurrence relation
         YnmTheta[npm] = rhon * ((n - m + 1) * p - (n + 1) * x * p1) / y * prefactor[npm] * eim;// theta derivative
@@ -160,97 +148,96 @@ protected:
     }                                                           // End loop over m in Ynm
   }
 
+protected:
+//! Get level from cell index
+  int getLevel(bigint index) {
+    int level = -1;                                             // Initialize level counter
+    while( index >= 0 ) {                                       // While cell index is non-negative
+      level++;                                                  //  Increment level
+      index -= 1 << 3*level;                                    //  Subtract number of cells in that level
+    }                                                           // End while loop for cell index
+    return level;                                               // Return the level
+  }
+
 public:
 //! Constructor
-  KernelBase() : Ci0(), Cj0(), ATOMS(), RSCALE(), GSCALE(), KSIZE(), ALPHA(), SIGMA(),
-                 keysHost(), rangeHost(), sourceHost(), targetHost(), constHost(),
-                 sourceBegin(), sourceSize(), targetBegin(),
-                 keysDevcSize(0), rangeDevcSize(0),
-                 sourceDevcSize(0), targetDevcSize(0),
-                 keysDevc(), rangeDevc(), sourceDevc(), targetDevc(),
-                 factorial(), prefactor(), Anm(), Cnm(),
-                 X0(0), R0(-1/EPS) {}
+  Kernel() : X0(0), R0(0), NP2P(0), NM2P(0), NM2L(0) {}
 //! Destructor
-  ~KernelBase() {}
-//! Copy constructor
-  KernelBase(const KernelBase&) : Sort(), Ci0(), Cj0(), ATOMS(), RSCALE(), GSCALE(), KSIZE(), ALPHA(), SIGMA(),
-                 keysHost(), rangeHost(), sourceHost(), targetHost(), constHost(),
-                 sourceBegin(), sourceSize(), targetBegin(),
-                 keysDevcSize(0), rangeDevcSize(0),
-                 sourceDevcSize(0), targetDevcSize(0),
-                 keysDevc(), rangeDevc(), sourceDevc(), targetDevc(),
-                 factorial(), prefactor(), Anm(), Cnm(),
-                 X0(0), R0(-1/EPS) {}
-//! Overload assignment
-  KernelBase &operator=(const KernelBase) {return *this;}
-
-//! Set center of root cell
-  void setX0(vect x0) {X0 = x0;}
-//! Set radius of root cell
-  void setR0(real r0) {R0 = r0;}
+  ~Kernel() {}
 
 //! Get center of root cell
-  vect getX0() const {return X0;}
+  vect getX0() {return X0;}
 //! Get radius of root cell
-  real getR0() const {return R0;}
+  real getR0() {return R0;}
 
 //! Set center and size of root cell
   void setDomain(Bodies &bodies, vect x0=0, real r0=M_PI) {
     vect xmin,xmax;                                             // Min,Max of domain
-    for( int d=0; d!=3; ++d ) {                                 //  Loop over each dimension
-      xmin[d] = x0[d] - r0;                                     //   Initialize xmin
-      xmax[d] = x0[d] + r0;                                     //   Initialize xmax
-    }                                                           //  End loop over each dimension
-    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {      // Loop over bodies
+    B_iter B = bodies.begin();                                  // Reset body iterator
+    xmin = xmax = B->X;                                         // Initialize xmin,xmax
+    X0 = 0;                                                     // Initialize center and size of root cell
+    for( B=bodies.begin(); B!=bodies.end(); ++B ) {             // Loop over bodies
       for( int d=0; d!=3; ++d ) {                               //  Loop over each dimension
         if     (B->X[d] < xmin[d]) xmin[d] = B->X[d];           //   Determine xmin
         else if(B->X[d] > xmax[d]) xmax[d] = B->X[d];           //   Determine xmax
       }                                                         //  End loop over each dimension
+      X0 += B->X;                                               //  Sum positions
     }                                                           // End loop over bodies
-    if( IMAGES != 0 ) {                                         // If periodic boundary
-      if( xmin[0] < x0[0]-r0 || x0[0]+r0 < xmax[0]              //  Check for outliers in x direction
-       || xmin[1] < x0[1]-r0 || x0[1]+r0 < xmax[1]              //  Check for outliers in y direction
-       || xmin[2] < x0[2]-r0 || x0[2]+r0 < xmax[2] ) {          //  Check for outliers in z direction
-        std::cout << "Error: Particles located outside periodic domain : " << std::endl;// Print error message
-        std::cout << xmin << std::endl;                         //   Print error message
-        std::cout << xmax << std::endl;                         //   Print error message
+    X0 /= bodies.size();                                        // Calculate average position
+    for( int d=0; d!=3; ++d ) {                                 // Loop over each dimension
+      X0[d] = int(X0[d]+.5);                                    //  Shift center to nearest integer
+      R0 = std::max(xmax[d] - X0[d], R0);                       //  Calculate max distance from center
+      R0 = std::max(X0[d] - xmin[d], R0);                       //  Calculate max distance from center
+    }                                                           // End loop over each dimension
+    R0 += 1e-5;                                                 // Add some leeway to root radius
+    if( IMAGES != 0 ) {                                         // If periodic boundary condition
+      if( X0[0]-R0 < x0[0]-r0 || x0[0]+r0 < X0[0]+R0            //  Check for outliers in x direction
+       || X0[1]-R0 < x0[1]-r0 || x0[1]+r0 < X0[1]+R0            //  Check for outliers in y direction
+       || X0[2]-R0 < x0[2]-r0 || x0[2]+r0 < X0[2]+R0 ) {        //  Check for outliers in z direction
+        std::cout << "Error: Particles located outside periodic domain" << std::endl;// Print error message
       }                                                         //  End if for outlier checking
-      X0 = x0;                                                  //  Center is x0
+      X0 = x0;                                                  //  Center is [0, 0, 0]
       R0 = r0;                                                  //  Radius is r0
-    } else {                                                    // If free boundary
-      for( int d=0; d!=3; ++d ) {                               //  Loop over each dimension
-        X0[d] = (xmin[d] + xmax[d]) * .5;                       //   Center of domain
-        R0 = std::max(X0[d]-xmin[d],R0);                        //   Radius of domain
-        R0 = std::max(xmax[d]-X0[d],R0);                        //   Radius of domain
-      }                                                         //  End loop over each dimension
-      R0 *= (1 + EPS);                                          //  Add some leeway to domain size
-    }                                                           // End if for periodic boundary
+    }                                                           // Endif for periodic boundary condition
+  }
+
+//! Set scaling paramters in Van der Waals
+  void setVanDerWaals(int atoms, double *rscale, double *gscale) {
+    ATOMS = atoms;                                              // Set number of atom types
+    RSCALE.resize(ATOMS*ATOMS);                                 // Resize rscale vector
+    GSCALE.resize(ATOMS*ATOMS);                                 // Resize gscale vector
+    for( int i=0; i!=ATOMS*ATOMS; ++i ) {                       // Loop over scale vector
+      RSCALE[i] = rscale[i];                                    //  Set rscale vector
+      GSCALE[i] = gscale[i];                                    //  Set gscale vector
+    }                                                           // End loop over scale vector
   }
 
 //! Precalculate M2L translation matrix
   void preCalculation() {
     const complex I(0.,1.);                                     // Imaginary unit
-    factorial = new real  [P];                                  // Factorial
-    prefactor = new real  [P*P];                                // sqrt( (n - |m|)! / (n + |m|)! )
-    Anm       = new real  [P*P];                                // (-1)^n / sqrt( (n + m)! / (n - m)! )
-    Cnm       = new complex [P*P*P*P];                          // M2L translation matrix Cjknm
+    factorial = new double  [P];                                // Factorial
+    prefactor = new double  [4*P2];                             // sqrt( (n - |m|)! / (n + |m|)! )
+    Anm       = new double  [4*P2];                             // (-1)^n / sqrt( (n + m)! / (n - m)! )
+    Ynm       = new complex [4*P2];                             // r^n * Ynm
+    YnmTheta  = new complex [4*P2];                             // theta derivative of r^n * Ynm
+    Cnm       = new complex [P4];                               // M2L translation matrix Cjknm
 
     factorial[0] = 1;                                           // Initialize factorial
     for( int n=1; n!=P; ++n ) {                                 // Loop to P
       factorial[n] = factorial[n-1] * n;                        //  n!
     }                                                           // End loop to P
 
-    for( int n=0; n!=P; ++n ) {                                 // Loop over n in Anm
+    for( int n=0; n!=2*P; ++n ) {                               // Loop over n in Anm
       for( int m=-n; m<=n; ++m ) {                              //  Loop over m in Anm
         int nm = n*n+n+m;                                       //   Index of Anm
         int nabsm = abs(m);                                     //   |m|
-        real fnmm = EPS;                                        //   Initialize (n - m)!
+        double fnmm = 1.0;                                      //   Initialize (n - m)!
         for( int i=1; i<=n-m; ++i ) fnmm *= i;                  //   (n - m)!
-        real fnpm = EPS;                                        //   Initialize (n + m)!
+        double fnpm = 1.0;                                      //   Initialize (n + m)!
         for( int i=1; i<=n+m; ++i ) fnpm *= i;                  //   (n + m)!
-        real fnma = 1.0;                                        //   Initialize (n - |m|)!
+        double fnma = 1.0;                                      //   Initialize (n - |m|)!
         for( int i=1; i<=n-nabsm; ++i ) fnma *= i;              //   (n - |m|)!
-        real fnpa = 1.0;                                        //   Initialize (n + |m|)!
+        double fnpa = 1.0;                                      //   Initialize (n + |m|)!
         for( int i=1; i<=n+nabsm; ++i ) fnpa *= i;              //   (n + |m|)!
         prefactor[nm] = std::sqrt(fnma/fnpa);                   //   sqrt( (n - |m|)! / (n + |m|)! )
         Anm[nm] = ODDEVEN(n)/std::sqrt(fnmm*fnpm);              //   (-1)^n / sqrt( (n + m)! / (n - m)! )
@@ -262,8 +249,7 @@ public:
         for( int n=0, nm=0; n!=P; ++n ) {                       //   Loop over n in Cjknm
           for( int m=-n; m<=n; ++m, ++nm, ++jknm ) {            //    Loop over m in Cjknm
             const int jnkm = (j+n)*(j+n)+j+n+m-k;               //     Index C_{j+n}^{m-k}
-            Cnm[jknm] = std::pow(I,real(abs(k-m)-abs(k)-abs(m)))//     Cjknm
-                      * real(ODDEVEN(j)*Anm[nm]*Anm[jk]/Anm[jnkm]) * EPS;
+            Cnm[jknm] = std::pow(I,double(abs(k-m)-abs(k)-abs(m)))*(ODDEVEN(j)*Anm[nm]*Anm[jk]/Anm[jnkm]);// Cjknm
           }                                                     //    End loop over m in Cjknm
         }                                                       //   End loop over n in Cjknm
       }                                                         //  End loop over in k in Cjknm
@@ -275,58 +261,232 @@ public:
     delete[] factorial;                                         // Free factorial
     delete[] prefactor;                                         // Free sqrt( (n - |m|)! / (n + |m|)! )
     delete[] Anm;                                               // Free (-1)^n / sqrt( (n + m)! / (n - m)! )
+    delete[] Ynm;                                               // Free r^n * Ynm
+    delete[] YnmTheta;                                          // Free theta derivative of r^n * Ynm
     delete[] Cnm;                                               // Free M2L translation matrix Cjknm
   }
 
-//! Set paramters for Van der Waals
-  void setVanDerWaals(int atoms, double *rscale, double *gscale) {
-//    assert(atoms <= 16);                                        // Change GPU constant memory alloc if needed
-    THETA = .1;                                                 // Force opening angle to be small
-    ATOMS = atoms;                                              // Set number of atom types
-    RSCALE.resize(ATOMS*ATOMS);                                 // Resize rscale vector
-    GSCALE.resize(ATOMS*ATOMS);                                 // Resize gscale vector
-    for( int i=0; i!=ATOMS*ATOMS; ++i ) {                       // Loop over scale vector
-      RSCALE[i] = rscale[i];                                    //  Set rscale vector
-      GSCALE[i] = gscale[i];                                    //  Set gscale vector
-    }                                                           // End loop over scale vector
+  void LaplaceInit();                                           //!< Initialize Laplace kernels
+  void LaplaceP2M();                                            //!< Evaluate Laplace P2M kernel
+  void LaplaceM2M();                                            //!< Evaluate Laplace M2M kernel
+  void LaplaceM2M_CPU();                                        //!< Evaluate Laplace M2M kernel on CPU
+  void LaplaceM2L();                                            //!< Evaluate Laplace M2L kernel
+  void LaplaceM2P();                                            //!< Evaluate Laplace M2P kernel
+  void LaplaceP2P();                                            //!< Evaluate Laplace P2P kernel
+  void LaplaceP2P_CPU();                                        //!< Evaluate Laplace P2P kernel on CPU
+  void LaplaceL2L();                                            //!< Evaluate Laplace L2L kernel
+  void LaplaceL2P();                                            //!< Evaluate Laplace L2P kernel
+  void LaplaceFinal();                                          //!< Finalize Lapalce kernels
+
+  void BiotSavartInit();                                        //!< Initialize Biot-Savart kernels
+  void BiotSavartP2M();                                         //!< Evaluate Biot-Savart P2M kernel
+  void BiotSavartM2M();                                         //!< Evalaute Biot-Savart M2M kernel
+  void BiotSavartM2M_CPU();                                     //!< Evaluate Biot-Savart M2M kernel on CPU
+  void BiotSavartM2L();                                         //!< Evaluate Biot-Savart M2L kernel
+  void BiotSavartM2P();                                         //!< Evaluate Biot-Savart M2P kernel
+  void BiotSavartP2P();                                         //!< Evaluate Biot-Savart P2P kernel
+  void BiotSavartP2P_CPU();                                     //!< Evaluate Biot-Savart P2P kernel on CPU
+  void BiotSavartL2L();                                         //!< Evaluate Biot-Savart L2L kernel
+  void BiotSavartL2P();                                         //!< Evaluate Biot-Savart L2P kernel
+  void BiotSavartFinal();                                       //!< Finalize Biot-Savart kernels
+
+  void StretchingInit();                                        //!< Initialize Stretching kernels
+  void StretchingP2M();                                         //!< Evaluate Stretching P2M kernel
+  void StretchingM2M();                                         //!< Evaluate Stretching M2M kernel
+  void StretchingM2M_CPU();                                     //!< Evaluate Stretching M2M kernel on CPU
+  void StretchingM2L();                                         //!< Evaluate Stretching M2L kernel
+  void StretchingM2P();                                         //!< Evaluate Stretching M2P kernel
+  void StretchingP2P();                                         //!< Evaluate Stretching P2P kernel
+  void StretchingP2P_CPU();                                     //!< Evaluate Stretching P2P kernel on CPU
+  void StretchingL2L();                                         //!< Evaluate Stretching L2L kernel
+  void StretchingL2P();                                         //!< Evaluate Stretching L2P kernel
+  void StretchingFinal();                                       //!< Finalize Stretching kernels
+
+  void GaussianInit();                                          //!< Initialize Gaussian kernels
+  void GaussianP2M();                                           //!< Dummy
+  void GaussianM2M();                                           //!< Dummy
+  void GaussianM2M_CPU();                                       //!< Dummy
+  void GaussianM2L();                                           //!< Dummy
+  void GaussianM2P();                                           //!< Dummy
+  void GaussianP2P();                                           //!< Evaluate Gaussian P2P kernel
+  void GaussianP2P_CPU();                                       //!< Evaluate Gaussian P2P kernel on CPU
+  void GaussianL2L();                                           //!< Dummy
+  void GaussianL2P();                                           //!< Dummy
+  void GaussianFinal();                                         //!< Finalize Gaussian kernels
+
+  void CoulombVdWInit();                                        //!< Initialize CoulombVdW kernels
+  void CoulombVdWP2M();                                         //!< Evaluate CoulombVdW P2M kernel
+  void CoulombVdWM2M();                                         //!< Evaluate CoulombVdW M2M kernel
+  void CoulombVdWM2M_CPU();                                     //!< Evaluate CoulombVdW M2M kernel on CPU
+  void CoulombVdWM2L();                                         //!< Evaluate CoulombVdW M2L kernel
+  void CoulombVdWM2P();                                         //!< Evaluate CoulombVdW M2P kernel
+  void CoulombVdWP2P();                                         //!< Evaluate CoulombVdW P2P kernel
+  void CoulombVdWP2P_CPU();                                     //!< Evaluate CoulombVdW P2P kernel on CPU
+  void CoulombVdWL2L();                                         //!< Evaluate CoulombVdW L2L kernel
+  void CoulombVdWL2P();                                         //!< Evaluate CoulombVdW L2P kernel
+  void CoulombVdWFinal();                                       //!< Finalize CoulombVdW kernels
+
+//! Select P2P kernel
+  void selectP2P() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceP2P();                                             //  Evaluate P2P kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartP2P();                                          //  Evaluate P2P kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingP2P();                                          //  Evaluate P2P kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianP2P();                                            //  Evaluate P2P kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWP2P();                                          //  Evaluate P2P kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
   }
 
-//! Set paramters for Ewald summation
-  void setEwald(real ksize, real alpha, real sigma) {
-    KSIZE = ksize;                                              // Set number of waves
-    ALPHA = alpha;                                              // Set scaling parameter
-    SIGMA = sigma;                                              // Set scaling parameter
+//! Select P2P_CPU kernel
+  void selectP2P_CPU() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceP2P_CPU();                                         //  Evaluate P2P_CPU kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartP2P_CPU();                                      //  Evaluate P2P_CPU kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingP2P_CPU();                                      //  Evaluate P2P_CPU kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianP2P_CPU();                                        //  Evaluate P2P_CPU kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWP2P_CPU();                                      //  Evaluate P2P_CPU kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
   }
 
-};
+//! Select P2M kernel
+  void selectP2M() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceP2M();                                             //  Evaluate P2M kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartP2M();                                          //  Evaluate P2M kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingP2M();                                          //  Evaluate P2M kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianP2M();                                            //  Evaluate P2M kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWP2M();                                          //  Evaluate P2M kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
+  }
 
-template<Equation equation>
-class Kernel : public KernelBase {
-public:
-  void initialize();                                            //!< Initialize kernels
-  void P2M(C_iter Ci);                                          //!< Evaluate P2M kernel on CPU
-  void M2M(C_iter Ci);                                          //!< Evaluate M2M kernel on CPU
-  void M2L(C_iter Ci, C_iter Cj) const;                         //!< Evaluate M2L kernel on CPU
-  void M2P(C_iter Ci, C_iter Cj) const;                         //!< Evaluate M2P kernel on CPU
-  void P2P(C_iter Ci, C_iter Cj) const;                         //!< Evaluate P2P kernel on CPU
-  void L2L(C_iter Ci) const;                                    //!< Evaluate L2L kernel on CPU
-  void L2P(C_iter Ci) const;                                    //!< Evaluate L2P kernel on CPU
-  void EwaldReal(C_iter Ci, C_iter Cj) const;                   //!< Evaluate Ewald real part on CPU
-  void EwaldWave(Bodies &bodies) const;                         //!< Evaluate Ewald wave part on CPU
-  void P2M();                                                   //!< Evaluate P2M kernel on GPU
-  void M2M();                                                   //!< Evaluate M2M kernel on GPU
-  void M2L();                                                   //!< Evaluate M2L kernel on GPU
-  void M2P();                                                   //!< Evaluate M2P kernel on GPU
-  void P2P();                                                   //!< Evalaute P2P kernel on GPU
-  void L2L();                                                   //!< Evaluate L2L kernel on GPU
-  void L2P();                                                   //!< Evaluate L2P kernel on GPU
-  void EwaldReal();                                             //!< Evaluate Ewald real part on GPU
-  void EwaldWave();                                             //!< Evalaute Ewald wave part on GPU
-  void finalize();                                              //!< Finalize kernels
+//! Select M2M kernel
+  void selectM2M() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceM2M();                                             //  Evaluate M2M kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartM2M();                                          //  Evaluate M2M kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingM2M();                                          //  Evaluate M2M kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianM2M();                                            //  Evaluate M2M kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWM2M();                                          //  Evaluate M2M kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
+  }
 
-  void allocate();                                              //!< Allocate GPU variables
-  void hostToDevice();                                          //!< Copy from host to device
-  void deviceToHost();
+//! Select M2M_CPU kernel
+  void selectM2M_CPU() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceM2M_CPU();                                         //  Evaluate M2M_CPU kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartM2M_CPU();                                      //  Evaluate M2M_CPU kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingM2M_CPU();                                      //  Evaluate M2M_CPU kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianM2M_CPU();                                        //  Evaluate M2M_CPU kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWM2M_CPU();                                      //  Evaluate M2M_CPU kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
+  }
+
+//! Select M2L kernel
+  void selectM2L() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceM2L();                                             //  Evaluate M2L kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartM2L();                                          //  Evaluate M2L kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingM2L();                                          //  Evaluate M2L kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianM2L();                                            //  Evaluate M2L kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWM2L();                                          //  Evaluate M2L kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
+  }
+
+//! Select M2P kernel
+  void selectM2P() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceM2P();                                             //  Evaluate M2P kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartM2P();                                          //  Evaluate M2P kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingM2P();                                          //  Evaluate M2P kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianM2P();                                            //  Evaluate M2P kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWM2P();                                          //  Evaluate M2P kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
+  }
+
+//! Select L2L kernel
+  void selectL2L() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceL2L();                                             //  Evaluate L2L kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartL2L();                                          //  Evaluate L2L kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingL2L();                                          //  Evaluate L2L kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianL2L();                                            //  Evaluate L2L kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWL2L();                                          //  Evaluate L2L kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
+  }
+
+//! Select L2P kernel
+  void selectL2P() {
+    if( kernelName == Laplace ) {                               // If Laplace kernel
+      LaplaceL2P();                                             //  Evaluate L2P kernel
+    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
+      BiotSavartL2P();                                          //  Evaluate L2P kernel
+    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
+      StretchingL2P();                                          //  Evaluate L2P kernel
+    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
+      GaussianL2P();                                            //  Evaluate L2P kernel
+    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
+      CoulombVdWL2P();                                          //  Evaluate L2P kernel
+    } else {                                                    // If kernel is none of the above
+      if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
+      abort();                                                  //  Abort execution
+    }                                                           // Endif for kernel type
+  }
 };
 
 #endif

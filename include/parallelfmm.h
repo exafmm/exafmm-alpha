@@ -1,31 +1,9 @@
-/*
-Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 #ifndef parallelfmm_h
 #define parallelfmm_h
 #include "partition.h"
 
 //! Handles all the communication of local essential trees
-template<Equation equation>
-class ParallelFMM : public Partition<equation> {
+class ParallelFMM : public Partition {
 private:
   std::vector<int>    sendBodyCnt;                              //!< Vector of body send counts
   std::vector<int>    sendBodyDsp;                              //!< Vector of body send displacements
@@ -45,30 +23,6 @@ private:
   JBodies recvBodies;                                           //!< Recv buffer for bodies
   JCells  sendCells;                                            //!< Send buffer for cells
   JCells  recvCells;                                            //!< Recv buffer for cells
-
-public:
-  using Kernel<equation>::printNow;                             //!< Switch to print timings
-  using Kernel<equation>::startTimer;                           //!< Start timer for given event
-  using Kernel<equation>::stopTimer;                            //!< Stop timer for given event
-  using Kernel<equation>::sortBodies;                           //!< Sort bodies according to cell index
-  using Kernel<equation>::sortCells;                            //!< Sort cells according to cell index
-  using Kernel<equation>::R0;                                   //!< Radius of root cell
-  using TreeStructure<equation>::buffer;                        //!< Buffer for MPI communication & sorting
-  using TreeStructure<equation>::getLevel;                      //!< Get level from cell index
-  using TreeStructure<equation>::getCenter;                     //!< Get cell center and radius from cell index
-  using TreeStructure<equation>::bodies2twigs;                  //!< Group bodies into twig cells
-  using TreeStructure<equation>::twigs2cells;                   //!< Link twigs bottomup to create all cells in tree
-  using Partition<equation>::isPowerOfTwo;                      //!< If n is power of two return true
-  using Partition<equation>::splitRange;                        //!< Split range and return partial range
-  using Partition<equation>::print;                             //!< Print in MPI
-  using Partition<equation>::getType;                           //!< Get MPI data type
-  using Partition<equation>::LEVEL;                             //!< Level of the MPI process binary tree
-  using Partition<equation>::XMIN;                              //!< Minimum position vector of bodies
-  using Partition<equation>::XMAX;                              //!< Maximum position vector of bodies
-  using Partition<equation>::nprocs;                            //!< Number of processes in the two split groups
-  using Partition<equation>::color;                             //!< Color for hypercube communicators
-  using Partition<equation>::key;                               //!< Key for hypercube communicators
-  using Partition<equation>::MPI_COMM;                          //!< Hypercube communicators
 
 private:
 //! Gather bounds of other domain
@@ -147,11 +101,14 @@ private:
       int irank = sendBodyRanks[i];                             //  Rank to send to & recv from
       for( int c=0; c!=sendBodyCellCnt[i]; ++c,++ic ) {         //  Loop over cells to send to that rank
         C_iter C = sendBodyCells[ic];                           //   Set cell iterator
-        for( B_iter B=C->LEAF; B!=C->LEAF+C->NDLEAF; ++B ) {    //   Loop over bodies in that cell
+        for( B_iter B=C->LEAF; B!=C->LEAF+C->NLEAF; ++B ) {     //   Loop over bodies in that cell
           JBody body;                                           //    Set compact body type for sending
           body.ICELL = B->ICELL;                                //    Set cell index of compact body type
           body.X     = B->X;                                    //    Set position of compact body type
           body.SRC   = B->SRC;                                  //    Set source values of compact body type
+          body.dxdt  = B->dxdt;
+          body.dxdt2 = B->dxdt2;
+          body.dgdt  = B->dgdt;
           sendBodies.push_back(body);                           //    Push it into the send buffer
         }                                                       //   End loop over bodies
       }                                                         //  End loop over cells
@@ -241,7 +198,7 @@ private:
 
 //! Get boundries of domains on other processes
   void getOtherDomain(vect &xmin, vect &xmax, int l) {
-    startTimer("Get domain");                                   // Start timer
+    startTimer("Get domain   ");                                // Start timer
     MPI_Datatype MPI_TYPE = getType(XMIN[l][0]);                // Get MPI data type
     vect send[2],recv[2];                                       // Send and recv buffer
     MPI_Request req;                                            // MPI requests
@@ -271,7 +228,7 @@ private:
       xmin = XMIN[l];                                           //  Use own XMIN value for xmin
       xmax = XMAX[l];                                           //  Use own XMAX value for xmax
     }                                                           // Endif for isolated process
-    stopTimer("Get domain",printNow);                           // Stop timer
+    stopTimer("Get domain   ",printNow);                        // Stop timer 
   }
 
 //! Get disatnce to other domain
@@ -292,7 +249,7 @@ private:
     int level = int(log(MPISIZE-1) / M_LN2 / 3) + 1;            // Level of local root cell
     if( MPISIZE == 1 ) level = 0;                               // Account for serial case
     for( int i=0; i!=C->NCHILD; i++ ) {                         // Loop over child cells
-      C_iter CC = C0+C->CHILD+i;                                //  Iterator for child cell
+      C_iter CC = C0+C->CHILD[i];                               //  Iterator for child cell
       bool divide = false;                                      //  Initialize logical for dividing
       if( IMAGES == 0 ) {                                       //  If free boundary condition
         Xperiodic = 0;                                          //   Set periodic coordinate offset
@@ -381,19 +338,19 @@ private:
 
 //! Turn recv bodies to twigs
   void rbodies2twigs(Bodies &bodies, Cells &twigs) {
-    startTimer("Recv bodies");                                  //  Start timer
+    startTimer("Recv bodies  ");                                //  Start timer
     for( JB_iter JB=recvBodies.begin(); JB!=recvBodies.end(); ++JB ) {// Loop over recv bodies
       Body body;                                                //  Body structure
-      body.IBODY = 0;                                           //  Initialize body index
-      body.IPROC = 0;                                           //  Initialize proc index
-      body.TRG   = 0;                                           //  Initialize target values
-      body.ICELL = JB->ICELL;                                   //  Set index of cell
+      body.ICELL = JB->ICELL;                                   //  Set index of body
       body.X     = JB->X;                                       //  Set position of body
       body.SRC   = JB->SRC;                                     //  Set source values of body
+      body.dxdt  = JB->dxdt;
+      body.dxdt2 = JB->dxdt2;
+      body.dgdt  = JB->dgdt;
       bodies.push_back(body);                                   //  Push body into bodies vector
     }                                                           // End loop over recv bodies
     buffer.resize(bodies.size());                               // Resize sort buffer
-    stopTimer("Recv bodies",printNow);                          //  Stop timer
+    stopTimer("Recv bodies  ",printNow);                        //  Stop timer 
     sortBodies(bodies,buffer,false);                            // Sort bodies in descending order
     bodies2twigs(bodies,twigs);                                 // Turn bodies to twigs
   }
@@ -402,8 +359,8 @@ private:
   void cells2twigs(Cells &cells, Cells &twigs, bool last) {
     while( !cells.empty() ) {                                   // While cell vector is not empty
       if( cells.back().NCHILD == 0 ) {                          //  If cell has no child
-        if( cells.back().NDLEAF == 0 || !last ) {               //   If cell has no leaf or is not last iteration
-          cells.back().NDLEAF = 0;                              //    Set number of leafs to 0
+        if( cells.back().NLEAF == 0 || !last ) {                //   If cell has no leaf or is not last iteration
+          cells.back().NLEAF = 0;                               //    Set number of leafs to 0
           twigs.push_back(cells.back());                        //    Push cell into twig vector
         }                                                       //   Endif for no leaf
       }                                                         //  Endif for no child
@@ -417,7 +374,7 @@ private:
       Cell cell;                                                //  Cell structure
       cell.ICELL = JC->ICELL;                                   //  Set index of cell
       cell.M     = JC->M;                                       //  Set multipole of cell
-      cell.CHILD = cell.NCLEAF = cell.NDLEAF = cell.NCHILD = 0; //  Set number of leafs and children
+      cell.NLEAF = cell.NCHILD = 0;                             //  Set number of leafs and children
       cell.LEAF  = bodies.end();                                //  Set pointer to first leaf
       getCenter(cell);                                          //  Set center and radius
       twigs.push_back(cell);                                    //  Push cell into twig vector
@@ -431,7 +388,7 @@ private:
       Cell cell;                                                //  Cell structure
       cell.ICELL = JC->ICELL;                                   //  Set index of cell
       cell.M     = JC->M;                                       //  Set multipole of cell
-      cell.CHILD = cell.NCLEAF = cell.NDLEAF = cell.NCHILD = 0; //  Set number of leafs and children
+      cell.NLEAF = cell.NCHILD = 0;                             //  Set number of leafs and children
       cell.LEAF  = bodies.end();                                //  Set pointer to first leaf
       getCenter(cell);                                          //  Set center and radius
       twigs.push_back(cell);                                    //  Push cell into twig vector
@@ -440,56 +397,56 @@ private:
 
 //! Zip two groups of twigs that overlap
   void zipTwigs(Cells &twigs, Cells &cells, Cells &sticks, bool last) {
-    startTimer("Sort resize");                                  // Start timer
+    startTimer("Sort resize  ");                                // Start timer
     Cells cbuffer = twigs;                                      // Sort buffer for cells
-    stopTimer("Sort resize",printNow);                          // Stop timer
+    stopTimer("Sort resize  ",printNow);                        // Stop timer 
     sortCells(twigs,cbuffer);                                   // Sort twigs in ascending order
-    startTimer("Ziptwigs");                                     // Start timer
-    bigint index = 1e8;                                         // Initialize index counter
+    startTimer("Ziptwigs     ");                                // Start timer
+    bigint index = -1;                                          // Initialize index counter
     while( !twigs.empty() ) {                                   // While twig vector is not empty
       if( twigs.back().ICELL != index ) {                       //  If twig's index is different from previous
         cells.push_back(twigs.back());                          //   Push twig into cell vector
         index = twigs.back().ICELL;                             //   Update index counter
-      } else if ( twigs.back().NDLEAF == 0 || !last ) {         //  Elseif twig-twig collision
+      } else if ( twigs.back().NLEAF == 0 || !last ) {          //  Elseif twig-twig collision
         cells.back().M += twigs.back().M;                       //   Accumulate the multipole
-      } else if ( cells.back().NDLEAF == 0 ) {                  //  Elseif twig-body collision
-        Mset M;                                                 //   Multipole for temporary storage
+      } else if ( cells.back().NLEAF == 0 ) {                   //  Elseif twig-body collision
+        coef M;                                                 //   Multipole for temporary storage
         M = cells.back().M;                                     //   Save multipoles from cells
         cells.back() = twigs.back();                            //   Copy twigs to cells
         cells.back().M = M;                                     //   Copy back multipoles to cells
         twigs.back().M = M - twigs.back().M;                    //   Take the difference of the two
-        if( std::abs(twigs.back().M[0]/M[0]) > EPS ) {          //   If the difference is non-zero
+        if( std::abs(twigs.back().M[0]/M[0]) > 1e-6 ) {         //   If the difference is non-zero
           sticks.push_back(twigs.back());                       //    Save this difference in the sticks vector
         }                                                       //   Endif for non-zero difference
       } else {                                                  //  Else body-body collision (don't do anything)
       }                                                         //  Endif for collision type
       twigs.pop_back();                                         //  Pop last element from twig vector
     }                                                           // End while for twig vector
-    stopTimer("Ziptwigs",printNow);                             // Stop timer
+    stopTimer("Ziptwigs     ",printNow);                        // Stop timer 
     sortCells(cells,cbuffer);                                   // Sort cells in ascending order
-    startTimer("Ziptwigs");                                     // Start timer
+    startTimer("Ziptwigs     ");                                // Start timer
     twigs = cells;                                              // Copy cells to twigs
     cells.clear();                                              // Clear cells
-    stopTimer("Ziptwigs",printNow);                             // Stop timer
+    stopTimer("Ziptwigs     ",printNow);                        // Stop timer 
   }
 
 //! Re-index bodies
   void reindexBodies(Bodies &bodies, Cells &twigs, Cells &cells ,Cells &sticks) {
-    startTimer("Reindex");                                      // Start timer
+    startTimer("Reindex      ");                                // Start timer
     while( !twigs.empty() ) {                                   // While twig vector is not empty
-      if( twigs.back().NDLEAF == 0 ) {                          //  If twig has no leafs
+      if( twigs.back().NLEAF == 0 ) {                           //  If twig has no leafs
         cells.push_back(twigs.back());                          //   Push twig into cell vector
       }                                                         //  Endif for no leafs
       twigs.pop_back();                                         //  Pop last element from twig vector
     }                                                           // End while for twig vector
 //    BottomUp::setIndex(bodies,-1,0,0,true);                     // Set index of bodies
     buffer.resize(bodies.size());                               // Resize sort buffer
-    stopTimer("Reindex",printNow);                              // Stop timer
+    stopTimer("Reindex      ",printNow);                        // Stop timer 
 //    sortBodies(bodies,buffer,false);                            // Sort bodies in descending order
 //    BottomUp::grow(bodies);                                     // Grow tree structure
-    sortBodies(bodies,buffer,false);                            // Sort bodies in descending order
+    sortBodies(bodies,buffer,false);                              // Sort bodies in descending order
     bodies2twigs(bodies,twigs);                                 // Turn bodies to twigs
-    startTimer("Reindex");                                      // Start timer
+    startTimer("Reindex      ");                                // Start timer
     for( C_iter C=twigs.begin(); C!=twigs.end(); ++C ) {        // Loop over cells
       if( sticks.size() > 0 ) {                                 //  If stick vector is not empty
         if( C->ICELL == sticks.back().ICELL ) {                 //   If twig's index is equal to stick's index
@@ -502,12 +459,12 @@ private:
     cells.insert(cells.begin(),sticks.begin(),sticks.end());    // Add remaining sticks to the end of cell vector
     sticks.clear();                                             // Clear sticks
     Cells cbuffer = cells;                                      // Sort buffer for cells
-    stopTimer("Reindex",printNow);                              // Stop timer
+    stopTimer("Reindex      ",printNow);                        // Stop timer 
     sortCells(cells,cbuffer);                                   // Sort cells in ascending order
-    startTimer("Reindex");                                      // Start timer
+    startTimer("Reindex      ");                                // Start timer
     twigs = cells;                                              // Copy cells to twigs
     cells.clear();                                              // Clear cells
-    stopTimer("Reindex",printNow);                              // Stop timer
+    stopTimer("Reindex      ",printNow);                        // Stop timer 
   }
 
 //! Turn sticks to send buffer
@@ -543,13 +500,13 @@ private:
 
 //! Check total charge
   void checkSumMass(Cells &cells) {
-    real localMass = 0;
+    double localMass = 0;
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
       if( C->NCHILD == 0 ) {
-        localMass += std::abs(C->M[0]);
+        localMass += C->M[0].real();
       }
     }
-    real globalMass;
+    double globalMass;
     MPI_Allreduce(&localMass,&globalMass,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     print("localMass : ",0);
     print(localMass);
@@ -559,22 +516,27 @@ private:
   }
 
 public:
+//! Constructor
+  ParallelFMM() : Partition() {}
+//! Destructor
+  ~ParallelFMM() {}
+
 //! Set bodies to communicate
   void setCommBodies(Cells &cells) {
     startTimer("Gather bounds");                                // Start timer
     gatherBounds();                                             // Gather bounds of other domain
-    stopTimer("Gather bounds",printNow);                        // Stop timer
+    stopTimer("Gather bounds",printNow);                        // Stop timer 
     startTimer("Get send rank");                                // Start timer
     getSendRank(cells);                                         // Get neighbor ranks to send to
-    stopTimer("Get send rank",printNow);                        // Stop timer
+    stopTimer("Get send rank",printNow);                        // Stop timer 
   }
 
 //! Update bodies using the previous send count
   void updateBodies(bool comm=true) {
-    startTimer("Get send cnt");                                 // Start timer
+    startTimer("Get send cnt ");                                // Start timer
     getSendCount(comm);                                         // Get size of data to send
-    stopTimer("Get send cnt",printNow);                         // Stop timer
-    startTimer("Alltoall B");                                   // Start timer
+    stopTimer("Get send cnt ",printNow);                        // Stop timer 
+    startTimer("Alltoall B   ");                                // Start timer
 #if 1
     int bytes = sizeof(sendBodies[0]);                          // Byte size of jbody structure
     for( int i=0; i!=MPISIZE; ++i ) {                           // Loop over ranks
@@ -595,7 +557,7 @@ public:
     commBodiesAlltoall();
 #endif
     sendBodies.clear();                                         // Clear send buffer for bodies
-    stopTimer("Alltoall B",printNow);                           // Stop timer
+    stopTimer("Alltoall B   ",printNow);                        // Stop timer 
   }
 
 //! Communicate bodies in the local essential tree
@@ -617,7 +579,7 @@ public:
     Cells twigs,sticks;                                         // Twigs and sticks are special types of cells
 
 #if 1
-    startTimer("Get LET");                                      // Start timer
+    startTimer("Get LET      ");                                // Start timer
     int ssize = 0;                                              // Initialize offset for send cells
     sendCellCnt.assign(MPISIZE,0);                              // Initialize cell send count
     sendCellDsp.assign(MPISIZE,0);                              // Initialize cell send displacement
@@ -627,8 +589,8 @@ public:
       sendCellDsp[irank] = ssize;                               //  Set cell send displacement of current rank
       ssize += sendCellCnt[irank];                              //  Increment offset for vector send cells
     }                                                           // End loop over ranks
-    stopTimer("Get LET",printNow);                              // Stop timer
-    startTimer("Alltoall C");                                   // Start timer
+    stopTimer("Get LET      ",printNow);                        // Stop timer 
+    startTimer("Alltoall C   ");                                // Start timer
     MPI_Alltoall(&sendCellCnt[0],1,MPI_INT,&recvCellCnt[0],1,MPI_INT,MPI_COMM_WORLD);// Communicate the send counts
     int rsize = 0;                                              // Initialize total recv count
     for( int irank=0; irank!=MPISIZE; ++irank ) {               // Loop over ranks to recv from
@@ -651,14 +613,14 @@ public:
       recvCellCnt[i] /= bytes;                                  //  Divide by bytes
       recvCellDsp[i] /= bytes;                                  //  Divide by bytes
     }                                                           // End loop over ranks
-    stopTimer("Alltoall C",printNow);                           // Stop timer
+    stopTimer("Alltoall C   ",printNow);                        // Stop timer 
     rbodies2twigs(bodies,twigs);                                // Put recv bodies into twig vector
-    startTimer("Cells2twigs");                                  // Start timer
+    startTimer("Cells2twigs  ");                                // Start timer
     cells2twigs(cells,twigs,true);                              // Put cells into twig vector
-    stopTimer("Cells2twigs",printNow);                          // Stop timer
-    startTimer("Recv2twigs");                                   // Start timer
+    stopTimer("Cells2twigs  ",printNow);                        // Stop timer 
+    startTimer("Recv2twigs   ");                                // Start timer
     recv2twigs(bodies,twigs);                                   // Put recv buffer into twig vector
-    stopTimer("Recv2twigs",printNow);                           // Stop timer
+    stopTimer("Recv2twigs   ",printNow);                        // Stop timer 
     zipTwigs(twigs,cells,sticks,true);                          // Zip two groups of twigs that overlap
     reindexBodies(bodies,twigs,cells,sticks);                   // Re-index bodies
     twigs2cells(twigs,cells,sticks);                            // Turn twigs to cells
@@ -668,34 +630,34 @@ public:
     int offTwigs = 0;                                           // Initialize offset of twigs
     for( int l=0; l!=LEVEL; ++l ) {                             // Loop over levels of N-D hypercube communication
       getOtherDomain(xmin,xmax,l+1);                            //  Get boundries of domains on other processes
-      startTimer("Get LET");                                    //  Start timer
+      startTimer("Get LET      ");                              //  Start timer
       getLET(cells.begin(),cells.end()-1,xmin,xmax);            //  Determine which cells to send
 #ifdef DEBUG
       checkNumCells(LEVEL-l-1);
       checkSumMass(cells);
 #endif
-      stopTimer("Get LET",printNow);                            //  Stop timer
-      startTimer("Alltoall C");                                 //  Start timer
+      stopTimer("Get LET      ",printNow);                      //  Stop timer 
+      startTimer("Alltoall C   ");                              //  Start timer
       commCellsAlltoall(l);                                     //  Communicate cells by one-to-one MPI_Alltoallv
       if( nprocs[l][0] % 2 == 1 && nprocs[l][0] != 1 && nprocs[l+1][0] <= nprocs[l+1][1] ) {// If scatter is necessary
         commCellsScatter(l);                                    //   Communicate cells by scattering from leftover proc
       }                                                         //  Endif for odd number of procs
-      stopTimer("Alltoall C",printNow);                         //  Stop timer
+      stopTimer("Alltoall C   ",printNow);                      //  Stop timer 
       if( l == LEVEL - 1 ) rbodies2twigs(bodies,twigs);         //  Put recv bodies into twig vector
-      startTimer("Cells2twigs");                                //  Start timer
+      startTimer("Cells2twigs  ");                              //  Start timer
       cells2twigs(cells,twigs,l==LEVEL-1);                      //  Put cells into twig vector
-      stopTimer("Cells2twigs",printNow);                        //  Stop timer
-      startTimer("Send2twigs");                                 //  Start timer
+      stopTimer("Cells2twigs  ",printNow);                      //  Stop timer 
+      startTimer("Send2twigs   ");                              //  Start timer
       send2twigs(bodies,twigs,offTwigs);                        //  Put send buffer (sticks) into twig vector
-      stopTimer("Send2twigs",printNow);                         //  Stop timer
-      startTimer("Recv2twigs");                                 //  Start timer
+      stopTimer("Send2twigs   ",printNow);                      //  Stop timer 
+      startTimer("Recv2twigs   ");                              //  Start timer
       recv2twigs(bodies,twigs);                                 //  Put recv buffer into twig vector
-      stopTimer("Recv2twigs",printNow);                         //  Stop timer
+      stopTimer("Recv2twigs   ",printNow);                      //  Stop timer 
 #ifdef DEBUG
       if( l == LEVEL - 1 ) {                                    //  If at last level
         complex SUM = 0;                                        //   Initialize accumulator
         for(C_iter C=twigs.begin(); C!=twigs.end(); ++C) {      //   Loop over twigs
-          if( C->NDLEAF == 0 ) SUM += C->M[0];                  //    Add multipoles of empty twigs
+          if( C->NLEAF == 0 ) SUM += C->M[0];                   //    Add multipoles of empty twigs
         }                                                       //   End loop over twigs
         print("Before recv   : ",0);                            //   Print identifier
         print(SUM);                                             //   Print sum of multipoles
@@ -716,9 +678,9 @@ public:
 #endif
       if( l == LEVEL - 1 ) reindexBodies(bodies,twigs,cells,sticks);// Re-index bodies
       twigs2cells(twigs,cells,sticks);                          //  Turn twigs to cells
-      startTimer("Sticks2send");                                //  Start timer
+      startTimer("Sticks2send  ");                              //  Start timer
       sticks2send(sticks,offTwigs);                             //  Turn sticks to send buffer
-      stopTimer("Sticks2send",printNow);                        //  Stop timer
+      stopTimer("Sticks2send  ",printNow);                      //  Stop timer 
     }                                                           // End loop over levels of N-D hypercube communication
 #endif
 
@@ -738,19 +700,21 @@ public:
     if( MPISIZE == 1 ) level = 0;                               // Account for serial case
     int off = ((1 << 3 * level) - 1) / 7;                       // Levelwise offset of ICELL
     int size = (1 << 3 * level) / MPISIZE;                      // Number of cells to remove
-    unsigned begin = MPIRANK * size + off;                      // Begin index of cells to remove
-    unsigned end = (MPIRANK + 1) * size + off;                  // End index of cells to remove
+    int begin = MPIRANK * size + off;                           // Begin index of cells to remove
+    int end = (MPIRANK + 1) * size + off;                       // End index of cells to remove
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {        // Loop over cells
-      int nchild = 0;                                           //  Initialize child cell counter
-      for( int c=0; c!=C->NCHILD; ++c ) {                       //  Loop over child cells
-        C_iter CC = cells.begin()+C->CHILD+c;                   //   Iterator of child cell
-        if( CC->ICELL < begin || end <= CC->ICELL ) {           //   If child cell is not within the removal range
-          C_iter CH = cells.begin()+C->CHILD+nchild;            //    New iterator of child cell
-          *CH = *CC;                                            //    Copy data of child cell
-          nchild++;                                             //    Increment child cell counter
-        }                                                       //   Endif for removal range
-      }                                                         //  End loop over child cells
-      C->NCHILD = nchild;                                       //  Update number of child cells
+      if( begin <= C->ICELL && C->ICELL < end ) {               //  If cell is within the removal range
+        C_iter CP = cells.begin()+C->PARENT;                    //   Iterator of parent cell
+        int ic = 0;                                             //   Initialize child cell counter
+        for( int c=0; c!=CP->NCHILD; ++c ) {                    //   Loop over child cells of parent
+          C_iter CC = cells.begin()+CP->CHILD[c];               //    Iterator of child cell of parent
+          if( CC->ICELL != C->ICELL ) {                         //    If child cell of parent is not current cell
+            CP->CHILD[ic] = CP->CHILD[c];                       //     Copy pointer to child cell
+            ic++;                                               //     Increment child cell counter
+          }                                                     //    Endif for current child cell
+        }                                                       //   End loop over child cells of parent
+        CP->NCHILD--;                                           //   Decrement number of child cells of parent
+      }                                                         //  Endif for removal range
     }                                                           // End loop over cells
   }
 };

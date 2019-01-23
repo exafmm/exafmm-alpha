@@ -1,21 +1,26 @@
-help:
-	@echo "Help documentation will be available soon...\n"
+.SUFFIXES: .cxx .cu .o
+.PHONY: docs
+
+CUDA_INSTALL_PATH = /usr/local/cuda
+
+#DEVICE  = cpu
+DEVICE  = gpu
+
+CXX     = mpicxx -ggdb3 -O3 -fPIC -fopenmp -ffast-math -funroll-loops -fforce-addr -rdynamic -I../include
+NVCC    = nvcc -Xcompiler "-fopenmp -O3" -I../include
+LFLAGS  = -D$(DEVICE)
+ifeq ($(DEVICE),gpu)
+LFLAGS  += -lcudart -lstdc++ -ldl -lm
+endif
+OBJECT  = ../kernel/$(DEVICE)Laplace.o ../kernel/$(DEVICE)BiotSavart.o\
+	../kernel/$(DEVICE)Stretching.o ../kernel/$(DEVICE)Gaussian.o\
+	../kernel/$(DEVICE)CoulombVdW.o
+
+.cxx.o:
+	$(CXX) -c $? -o $@ $(LFLAGS)
+
+.cu.o:
+	$(NVCC) -c $? -o $@ $(LFLAGS)
+
 clean:
-	find . -name "*.o" -o -name "*.out*" | xargs rm -rf
-cleandat:
-	find . -name "*.dat" -o -name "*.dot" -o -name "*.svg" | xargs rm -rf
-cleanlib:
-	find . -name "*.a" -o -name "*.so" | xargs rm -rf
-cleanall:
-	make clean
-	make cleandat
-commit  :
-	hg commit
-	hg push
-	hg pull -u
-save    :
-	make cleanall
-	cd .. && tar zcvf exafmm.tgz exafmm
-revert	:
-	hg revert --all
-	rm -rf `find . -name "*.orig"`
+	rm -rf `find .. -name "*.o" -o -name "*.out*" -o -name "*.dat" -o -name "*.a"`

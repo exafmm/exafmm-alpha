@@ -1,32 +1,10 @@
-/*
-Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 #ifndef partition_h
 #define partition_h
 #include "mympi.h"
 #include "serialfmm.h"
 
 //! Handles all the partitioning of domains
-template<Equation equation>
-class Partition : public MyMPI, public SerialFMM<equation> {
+class Partition : public MyMPI, public SerialFMM {
 private:
   int numCells1D;                                               //!< Number of cells in one dimension (leaf level)
 
@@ -36,20 +14,9 @@ protected:
   std::vector<vect> XMAX;                                       //!< Maximum position vector of bodies
   int nprocs[64][2];                                            //!< Number of processes in the two split groups
   int offset[64][2];                                            //!< Offset of body in the two split groups
-  int  color[64][3];                                            //!< Color of hypercube communicators
-  int    key[64][3];                                            //!< Key of hypercube communicators
-  MPI_Comm MPI_COMM[64][3];                                     //!< Hypercube communicators
-
-public:
-  using Kernel<equation>::printNow;                             //!< Switch to print timings
-  using Kernel<equation>::startTimer;                           //!< Start timer for given event
-  using Kernel<equation>::stopTimer;                            //!< Stop timer for given event
-  using Kernel<equation>::sortBodies;                           //!< Sort bodies according to cell index
-  using Kernel<equation>::X0;                                   //!< Center of root cell
-  using Kernel<equation>::R0;                                   //!< Radius of root cell
-  using TreeStructure<equation>::buffer;                        //!< Buffer for MPI communication & sorting
-  using TreeStructure<equation>::getLevel;                      //!< Get level from cell index
-  using BottomUp<equation>::getMaxLevel;                        //!< Max level for bottom up tree build
+  int  color[64][3];                                            //!< Color of Gather, Scatter, and Alltoall communicators
+  int    key[64][3];                                            //!< Key of Gather, Scatter, and Alltoall communicators
+  MPI_Comm MPI_COMM[64][3];                                     //!< Communicators for Gather, Scatter, and Alltoall
 
 private:
 //! Split domain according to iSplit
@@ -137,7 +104,7 @@ protected:
 
 //! One-to-one MPI_Alltoallv
   void bisectionAlltoall(Bodies &bodies, int nthLocal, int numLocal, int &newSize, int l) {
-    startTimer("Bi Alltoall");                                  // Start timer
+    startTimer("Bi Alltoall  ");                                // Start timer
     const int bytes = sizeof(bodies[0]);                        // Byte size of body structure
     int scnt[2] = {nthLocal, numLocal - nthLocal};              // Set send count to right and left size
     int rcnt[2] = {0, 0};                                       // Initialize recv count
@@ -159,13 +126,13 @@ protected:
                   MPI_COMM[l+1][2]);                            // MPI_COMM[2] is for the one-to-one pair
     if( color[l+1][0] == color[l+1][1] ) bodies = buffer;       // Don't update if leftover process
     buffer.resize(bodies.size());                               // Resize sort buffer
-    stopTimer("Bi Alltoall",printNow);                          // Stop timer 
+    stopTimer("Bi Alltoall  ",printNow);                        // Stop timer 
     sortBodies(bodies,buffer);                                  // Sort bodies in ascending order
   }
 
 //! Scattering from leftover processes
   void bisectionScatter(Bodies &bodies, int nthLocal, int &newSize, int l) {
-    startTimer("Bi Scatter");                                   // Start timer
+    startTimer("Bi Scatter   ");                                // Start timer
     const int bytes = sizeof(bodies[0]);                        // Byte size of body structure
     int numScatter = nprocs[l+1][1] - 1;                        // Number of processes to scatter to
     int oldSize = newSize;                                      // Size of recv buffer before communication
@@ -202,12 +169,12 @@ protected:
     if( key[l+1][1] != numScatter ) sortBodies(bodies,buffer);  // Sort bodies in ascending order
     delete[] scnt;                                              // Delete send count
     delete[] sdsp;                                              // Delete send displacement
-    stopTimer("Bi Scatter",printNow);                           // Stop timer 
+    stopTimer("Bi Scatter   ",printNow);                        // Stop timer 
   }
 
 //! Gathering to leftover processes
   void bisectionGather(Bodies &bodies, int nthLocal, int numLocal, int &newSize, int l) {
-    startTimer("Bi Gather");                                    // Start timer
+    startTimer("Bi Gather    ");                                // Start timer
     const int bytes = sizeof(bodies[0]);                        // Byte size of body structure
     int numGather = nprocs[l+1][0] - 1;                         // Number of processes to gather to
     int oldSize = newSize;                                      // Size of recv buffer before communication
@@ -243,21 +210,17 @@ protected:
     delete[] rcnt;                                              // Delete recv count
     delete[] rdsp;                                              // Delete send count
     if( key[l+1][0] == 0 ) sortBodies(bodies,buffer);           // Sort bodies in ascending order
-    stopTimer("Bi Gather",printNow);                            // Stop timer 
+    stopTimer("Bi Gather    ",printNow);                        // Stop timer 
   }
 
 public:
 //! Constructor
-  Partition() : SerialFMM<equation>() {
+  Partition() : SerialFMM() {
     LEVEL = int(log(MPISIZE) / M_LN2 - 1e-5) + 1;               // Level of the process binary tree
     if(MPISIZE == 1) LEVEL = 0;                                 // Level is 0 for a serial execution
     XMIN.resize(LEVEL+1);                                       // Minimum position vector at each level
     XMAX.resize(LEVEL+1);                                       // Maximum position vector at each level
-    for( int d=0; d!=3; ++d ) {                                 // Loop over each dimension
-      XMIN[0][d] = 1 / EPS;                                     //  Initialize XMIN[0]
-      XMAX[0][d] = - 1 / EPS;                                   //  Initialize XMAX[0]
-    }                                                           // End loop over each dimension
-    startTimer("Split comm");                                   // Start timer
+    startTimer("Split comm   ");                                // Start timer
     nprocs[0][0] = nprocs[0][1] = MPISIZE;                      // Initialize number of processes in groups
     offset[0][0] = offset[0][1] = 0;                            // Initialize offset of body in groups
      color[0][0] =  color[0][1] =  color[0][2] = 0;             // Initialize color of communicators
@@ -265,15 +228,16 @@ public:
     for( int l=0; l!=LEVEL; ++l ) {                             // Loop over levels of N-D hypercube communication
       bisectionGetComm(l);                                      //  Split the MPI communicator for that level
     }                                                           // End loop over levels of N-D hypercube communication
-    stopTimer("Split comm",printNow);                           // Stop timer 
+    stopTimer("Split comm   ",printNow);                        // Stop timer 
   }
 //! Destructor
   ~Partition() {}
 
 //! Set bounds of domain to be partitioned
   void setGlobDomain(Bodies &bodies, vect x0=0, real r0=M_PI) {
-    numCells1D = 1 << getMaxLevel(bodies);                      // Number of leaf cells in each dimensions
+    numCells1D = 1 << getMaxLevel(bodies);                      // Set initial number of bodies
     B_iter B = bodies.begin();                                  // Reset body iterator
+    XMIN[0] = XMAX[0] = B->X;                                   // Initialize xmin,xmax
     MPI_Datatype MPI_TYPE = getType(XMIN[0][0]);                // Get MPI data type
     for( B=bodies.begin(); B!=bodies.end(); ++B ) {             // Loop over bodies
       for( int d=0; d!=3; ++d ) {                               //  Loop over each dimension
@@ -286,23 +250,24 @@ public:
     XMAX[0] = X;                                                // Get data from buffer
     MPI_Allreduce(XMIN[0],X,3,MPI_TYPE,MPI_MIN,MPI_COMM_WORLD); // Reduce global minimum
     XMIN[0] = X;                                                // Get data from buffer
-    if( IMAGES != 0 ) {                                         // If periodic boundary
-      if( XMIN[0][0] < x0[0]-r0 || x0[0]+r0 < XMAX[0][0]        //  Check for outliers in x direction
-       || XMIN[0][1] < x0[1]-r0 || x0[1]+r0 < XMAX[0][1]        //  Check for outliers in y direction
-       || XMIN[0][2] < x0[2]-r0 || x0[2]+r0 < XMAX[0][2] ) {    //  Check for outliers in z direction
+    for( int d=0; d!=3; ++d ) {                                 // Loop over each dimension
+      X0[d] = (XMAX[0][d] + XMIN[0][d]) / 2;                    //  Calculate center of domain
+      X0[d] = int(X0[d]+.5);                                    //  Shift center to nearest integer
+      R0 = std::max(XMAX[0][d] - X0[d], R0);                    //  Calculate max distance from center
+      R0 = std::max(X0[d] - XMIN[0][d], R0);                    //  Calculate max distance from center
+    }                                                           // End loop over each dimension
+    if( IMAGES != 0 ) {                                         // If periodic boundary condition
+      if( X0[0]-R0 < x0[0]-r0 || x0[0]+r0 < X0[0]+R0            //  Check for outliers in x direction
+       || X0[1]-R0 < x0[1]-r0 || x0[1]+r0 < X0[1]+R0            //  Check for outliers in y direction
+       || X0[2]-R0 < x0[2]-r0 || x0[2]+r0 < X0[2]+R0 ) {        //  Check for outliers in z direction
         std::cout << "Error: Particles located outside periodic domain @ rank "
-                << MPIRANK << std::endl;                        //   Print error message
+                  << MPIRANK << std::endl;                      //   Print error message
       }                                                         //  End if for outlier checking
-      X0 = x0;                                                  //  Center is x0
-      R0 = r0;                                                  //  Radius is r0
-    } else {                                                    // If free boundary
-      for( int d=0; d!=3; ++d ) {                               //  Loop over each dimension
-        X0[d] = (XMIN[0][d] + XMAX[0][d]) * .5;                 //   Center of domain
-        R0 = std::max(X0[d]-XMIN[0][d],R0);                     //   Radius of domain
-        R0 = std::max(XMAX[0][d]-X0[d],R0);                     //   Radius of domain
-      }                                                         //  End loop over each dimension
-      R0 *= (1 + EPS);                                          //  Add some leeway to domain size
-    }                                                           // End if for periodic boundary
+      X0 = x0;                                                  //  Center is [0, 0, 0]
+      R0 = r0;                                                  //  Radius is M_PI
+    } else {                                                    // If not periodic boundary condition
+      R0 += 1e-5;                                               //  Add some leeway to root radius
+    }                                                           // Endif for periodic boundary condition
     XMAX[0] = X0 + R0;                                          // Reposition global maximum
     XMIN[0] = X0 - R0;                                          // Reposition global minimum
   }
@@ -411,7 +376,7 @@ public:
 
 //! Partitioning by recursive bisection
   void bisection(Bodies &bodies) {
-    startTimer("Bin bodies");                                   // Start timer
+    startTimer("Bin bodies   ");                                // Start timer
     MPI_Datatype MPI_TYPE = getType(bodies[0].ICELL);           // Get MPI data type
     int newSize;                                                // New size of recv buffer
     bigint numLocal = bodies.size();                            // Local data size
@@ -420,12 +385,12 @@ public:
     bigint nthGlobal = (numGlobal * (nprocs[0][0] / 2)) / nprocs[0][0];// Split at nth global element
     binBodies(bodies,2);                                        // Bin bodies into leaf level cells
     buffer.resize(numLocal);                                    // Resize sort buffer
-    stopTimer("Bin bodies",printNow);                           // Stop timer 
+    stopTimer("Bin bodies   ",printNow);                        // Stop timer 
     sortBodies(bodies,buffer);                                  // Sort bodies in ascending order
-    startTimer("Split bodies");                                 // Start timer
+    startTimer("Split bodies ");                                // Start timer
     bigint iSplit = nth_element(bodies,nthGlobal);              // Get cell index of nth global element
     int nthLocal = splitBodies(bodies,iSplit);                  // Split bodies based on iSplit
-    stopTimer("Split bodies",printNow);                         // Stop timer 
+    stopTimer("Split bodies ",printNow);                        // Stop timer 
     for( int l=0; l!=LEVEL; ++l ) {                             // Loop over levels of N-D hypercube communication
       splitDomain(iSplit,l,2-l%3);                              //  Split the domain according to iSplit
       bisectionAlltoall(bodies,nthLocal,numLocal,newSize,l);    //  Communicate bodies by one-to-one MPI_Alltoallv
@@ -439,37 +404,37 @@ public:
         usleep(WAIT);                                           //   Wait for "WAIT" milliseconds
         if( MPIRANK == j ) {                                    //   If it's my turn to print
           std::cout << "MPIRANK : " << j << std::endl;          //    Print rank
-          for(int i=0; i!=9; ++i) std::cout << bodies[numLocal/10*i].ICELL << " ";// Print sampled body indices
+          for(int i=0; i!=9; ++i) std::cout << bodies[numLocal/10*i].I << " ";// Print sampled body indices
           std::cout << std::endl;                               //    New line
         }                                                       //   Endif for my turn
       }                                                         //  End loop over ranks
 #endif
-      startTimer("Bin bodies");                                 //  Start timer
+      startTimer("Bin bodies   ");                              //  Start timer
       numLocal = newSize;                                       //  Update local data size
       MPI_Allreduce(&numLocal,&numGlobal,1,MPI_TYPE,MPI_SUM,MPI_COMM[l+1][0]);// Reduce global data size
       nthGlobal = (numGlobal * (nprocs[l+1][0] / 2)) / nprocs[l+1][0];//  Split at nth global element
       binBodies(bodies,2-(l+1)%3);                              //  Bin bodies into leaf level cells
       buffer.resize(numLocal);                                  //  Resize sort buffer
-      stopTimer("Bin bodies",printNow);                         //  Stop timer 
+      stopTimer("Bin bodies   ",printNow);                      //  Stop timer 
       sortBodies(bodies,buffer);                                //  Sort bodies in ascending order
-      startTimer("Split bodies");                               //  Start timer
+      startTimer("Split bodies ");                              //  Start timer
       iSplit = nth_element(bodies,nthGlobal,MPI_COMM[l+1][0]);  //  Get cell index of nth global element
       nthLocal = splitBodies(bodies,iSplit);                    //  Split bodies based on iSplit
-      stopTimer("Split bodies",printNow);                       //  Stop timer 
+      stopTimer("Split bodies ",printNow);                      //  Stop timer 
     }                                                           // End loop over levels of N-D hypercube communication
   }
 
 //! Partition by recursive octsection
   void octsection(Bodies &bodies) {
-    startTimer("Partition");                                    // Start timer
+    startTimer("Partition    ");                                // Start timer
     int byte = sizeof(bodies[0]);                               // Byte size of body structure
     int level = int(log(MPISIZE-1) / M_LN2 / 3) + 1;            // Level of local root cell
     if( MPISIZE == 1 ) level = 0;                               // For serial execution local root cell is root cell
-    BottomUp<equation>::setIndex(bodies,level);                 // Set index of bodies for that level
+    BottomUp::setIndex(bodies,level);                           // Set index of bodies for that level
     buffer.resize(bodies.size());                               // Resize sort buffer
-    stopTimer("Partition");                                     // Stop timer 
+    stopTimer("Partition    ");                                 // Stop timer 
     sortBodies(bodies,buffer);                                  // Sort bodies in ascending order
-    startTimer("Partition");                                    // Start timer
+    startTimer("Partition    ");                                // Start timer
     int *scnt = new int [MPISIZE];                              // Send count
     int *sdsp = new int [MPISIZE];                              // Send displacement
     int *rcnt = new int [MPISIZE];                              // Recv count
@@ -511,12 +476,12 @@ public:
     delete[] sdsp;                                              // Delete send displacement
     delete[] rcnt;                                              // Delete recv count
     delete[] rdsp;                                              // Delete recv displacement
-    stopTimer("Partition",printNow);                            // Stop timer 
+    stopTimer("Partition    ",printNow);                        // Stop timer 
   }
 
 //! Send bodies back to where they came from
   void unpartition(Bodies &bodies) {
-    startTimer("Unpartition");                                  // Start timer
+    startTimer("Unpartition  ");                                // Start timer
     int byte = sizeof(bodies[0]);                               // Byte size of body structure
     int *scnt = new int [MPISIZE];                              // Send count
     int *sdsp = new int [MPISIZE];                              // Send displacement
@@ -526,9 +491,9 @@ public:
       B->ICELL = B->IPROC;                                      //  Copy process rank to cell index for sorting
     }                                                           // End loop over bodies
     buffer.resize(bodies.size());                               // Resize sort buffer
-    stopTimer("Unpartition");                                   // Stop timer 
+    stopTimer("Unpartition  ");                                 // Stop timer 
     sortBodies(bodies,buffer);                                  // Sort bodies in ascending order
-    startTimer("Unpartition");                                  // Start timer
+    startTimer("Unpartition  ");                                // Start timer
     for( int i=0; i!=MPISIZE; ++i ) {                           // Loop over ranks
       scnt[i] = 0;                                              //  Initialize send counts
     }                                                           // End loop over ranks
@@ -558,7 +523,7 @@ public:
     delete[] sdsp;                                              // Delete send displacement
     delete[] rcnt;                                              // Delete recv count
     delete[] rdsp;                                              // Delete recv displacement
-    stopTimer("Unpartition",printNow);                          // Stop timer 
+    stopTimer("Unpartition  ",printNow);                        // Stop timer 
   }
 };
 
