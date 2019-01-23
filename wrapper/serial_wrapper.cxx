@@ -1,4 +1,5 @@
-#include "parallelfmm.h"
+#include "types.h"
+#include "serialfmm.h"
 
 SerialFMM * FMM;
 
