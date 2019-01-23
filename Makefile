@@ -26,4 +26,3 @@ OBJECT  = ../kernel/$(DEVICE)Laplace.o ../kernel/$(DEVICE)BiotSavart.o\
 
 clean:
 	rm -rf `find .. -name "*.o" -o -name "*.out*" -o -name "*.dat" -o -name "*.a"`
-	rm -f $(SRC)

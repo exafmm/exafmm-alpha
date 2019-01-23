@@ -7,10 +7,10 @@ int main() {
   Bodies bodies(numBodies);
   Cells cells;
   ParallelFMM FMM;
+  FMM.setKernel("Laplace");
   FMM.initialize();
   FMM.IMAGES = 0;
   FMM.THETA = 1 / sqrtf(4);
-  FMM.setKernel("Laplace");
   bool printNow = (MPIRANK == 0);
 
   FMM.startTimer("Set bodies   ");
