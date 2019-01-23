@@ -43,6 +43,8 @@ protected:
   complex *YnmTheta;                                            //!< \f$ \theta \f$ derivative of \f$ r^n Y_n^m \f$
   complex *Cnm;                                                 //!< M2L translation matrix \f$ C_{jn}^{km} \f$
 public:
+  int IMAGES;                                                   //!< Number of periodic image sublevels
+  real THETA;                                                   //!< Box opening criteria
   real NP2P;                                                    //!< Number of P2P kernel call
   real NM2P;                                                    //!< Number of M2P kernel call
   real NM2L;                                                    //!< Number of M2L kernel call

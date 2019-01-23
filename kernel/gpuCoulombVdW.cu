@@ -5,7 +5,7 @@
 void Kernel::CoulombVdWInit() {
   startTimer("Init GPU     ");                                  // Start timer
   cudaThreadExit();                                             // Exit GPU thread
-  cudaSetDevice(DEVICE);                                        // Set GPU device
+  cudaSetDevice(MPIRANK % GPUS);                                // Set GPU device
   cudaThreadSynchronize();                                      // Sync GPU threads
   stopTimer("Init GPU     ",MPIRANK==0);                        // Stop timer & print
   eraseTimer("Init GPU     ");                                  // Erase timer

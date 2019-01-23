@@ -25,15 +25,9 @@ typedef std::complex<double> complex;                           //!< Complex num
 #ifndef KERNEL
 int MPIRANK = 0;                                                //!< MPI comm rank
 int MPISIZE = 1;                                                //!< MPI comm size
-int DEVICE  = 0;                                                //!< GPU device ID
-int IMAGES;                                                     //!< Number of periodic image sublevels
-real THETA;                                                     //!< Box opening criteria
 #else
 extern int MPIRANK;                                             //!< MPI comm rank
 extern int MPISIZE;                                             //!< MPI comm size
-extern int DEVICE;                                              //!< GPU device ID
-extern int IMAGES;                                              //!< Number of periodic image sublevels
-extern real THETA;                                              //!< Box opening criteria
 #endif
 
 const int  P       = 10;                                        //!< Order of expansions
@@ -42,7 +36,7 @@ const int  MAXBODY = 200000;                                    //!< Maximum num
 const int  MAXCELL = 10000000;                                  //!< Maximum number of bodies/coefs in cell per GPU kernel
 const real CLET    = 2;                                         //!< LET opening critetia
 const real EPS2    = 1e-6;                                      //!< Softening parameter
-const int  GPUS    = 3;                                         //!< Number of GPUs per node
+const int  GPUS    = 4;                                         //!< Number of GPUs per node
 const int  THREADS = 64;                                        //!< Number of threads per thread-block
 
 const int  NTERM   = P*(P+1)/2;                                 //!< Number of terms for spherical harmonics

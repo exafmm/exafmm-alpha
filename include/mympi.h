@@ -8,22 +8,24 @@
 class MyMPI {
 protected:
   const int WAIT;                                               //!< Waiting time between output of different ranks
-  int       MPISIZES;                                           //!< Number of MPI processes for split communicator
-  int       MPIRANKS;                                           //!< Rank of current MPI process for split communicator
+  int FLAG;                                                     //!< Flag for MPI_Init 
+  int MPISIZES;                                                 //!< Number of MPI processes for split communicator
+  int MPIRANKS;                                                 //!< Rank of current MPI process for split communicator
 public:
+
 //! Constructor, initialize WAIT time
   MyMPI() : WAIT(100) {                                         // Constructor, initialize WAIT time
     int argc(0);                                                // Dummy argument count
     char **argv;                                                // Dummy argument value
-    MPI_Init(&argc,&argv);                                      // Initialize MPI communicator
+    MPI_Initialized(&FLAG);                                     // Check if MPI has been initialized
+    if(!FLAG) MPI_Init(&argc,&argv);                            // Initialize MPI communicator
     MPI_Comm_size(MPI_COMM_WORLD,&MPISIZE);                     // Get number of MPI processes
     MPI_Comm_rank(MPI_COMM_WORLD,&MPIRANK);                     // Get rank of current MPI process
-    DEVICE = MPIRANK % GPUS;                                    // Get GPU device ID from MPI rank
   }
 
 //! Destructor
   ~MyMPI() {
-    MPI_Finalize();                                             // Finalize MPI communicator
+    if(!FLAG) MPI_Finalize();                                   // Finalize MPI communicator
   }
 
 //! If n is power of two return true

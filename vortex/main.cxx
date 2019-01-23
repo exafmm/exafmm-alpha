@@ -4,8 +4,6 @@
 #endif
 
 int main() {
-  IMAGES = 1;
-  THETA = 1/sqrtf(4);
   const int numGrid1D = 128;
   const int numSteps  = 1000;
   const int numSkip   = 9;
@@ -15,8 +13,10 @@ int main() {
   Bodies bodies, bodies2;
   Cells cells;
   Vortex FMM(numGrid1D);
-  FMM.setKernel("Gaussian");
   FMM.initialize();
+  FMM.IMAGES = 1;
+  FMM.THETA = 1/sqrtf(4);
+  FMM.setKernel("Gaussian");
   bool printNow = (MPIRANK == 0);
 
   FMM.startTimer("Read data    ");
