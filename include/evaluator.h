@@ -33,7 +33,6 @@ private:
   real        timeP2P;                                          //!< P2P execution time
 
 protected:
-  int         NCRIT;                                            //!< Number of particles per leaf
   C_iter      CiB;                                              //!< icells begin per call
   C_iter      CiE;                                              //!< icells end per call
   Lists       listM2L;                                          //!< M2L interaction list
