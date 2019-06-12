@@ -33,17 +33,22 @@ extern "C" void fmm_biot_savart_(int & numBodies, double * x, double * g, double
   }
   FMM->stopTimer("Set bodies   ",printNow);
 
-  FMM->startTimer("Set domain   ");
-  FMM->setDomain(bodies);
-  FMM->stopTimer("Set domain   ",printNow);
-
+  Bodies jbodies = bodies;
+  B=jbodies.begin();
+  for (int b=0; b<numBodies; b++,B++) {
+    for (int d=0; d<3; d++) {
+      B->X[d] = -B->X[d];
+    }
+  }
   FMM->startTimer("Build tree   ");
-  Cells cells;
+  Cells cells, jcells;
+  FMM->setDomain(bodies);
   FMM->bottomup(bodies,cells);
+  FMM->setDomain(jbodies);
+  FMM->bottomup(jbodies,jcells);
   FMM->stopTimer("Build tree   ",printNow);
 
   FMM->startTimer("Traversal    ");
-  Cells jcells = cells;
   FMM->downward(cells,jcells,1);
   FMM->stopTimer("Traversal    ",printNow);
 
@@ -76,6 +81,12 @@ extern "C" void direct_biot_savart_(int & numBodies, double * x, double * g, dou
 
   FMM->startTimer("Direct sum   ");
   Bodies jbodies = bodies;
+  B=jbodies.begin();
+  for (int b=0; b<numBodies; b++,B++) {
+    for (int d=0; d<3; d++) {
+      B->X[d] = -B->X[d];
+    }
+  }
   FMM->evalP2P(bodies,jbodies);
   FMM->stopTimer("Direct sum   ",printNow);
 
