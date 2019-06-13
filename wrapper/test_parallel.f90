@@ -1,43 +1,46 @@
 program main
   implicit none
   include 'mpif.h'
-  integer i,n,ierr,mpisize,mpirank
+  integer i,ni,nj,ierr,mpisize,mpirank
   integer,dimension (128) :: iseed
   real(8) diff,norm
-  real(8),parameter :: pi=3.14159265358979312d0
-  real(8),allocatable,dimension(:) :: x,g,u,ud
+  real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj
   call mpi_init(ierr)
   call mpi_comm_size(mpi_comm_world,mpisize,ierr)
   call mpi_comm_rank(mpi_comm_world,mpirank,ierr)
-  n = 10000
-  allocate( x(3*n),g(3*n),u(3*n),ud(3*n) )
+  ni = 10000
+  nj = 20000
+  allocate( xi(3*ni),ui(3*ni),ud(3*ni),xj(3*nj),gj(3*nj) )
   do i = 1,128
      iseed(i) = mpirank
   enddo
   call random_seed(put=iseed)
-  call random_number(x)
-  call random_number(g)
-  do i = 1,n
-     x(3*i-2) = (x(3*i-2) - 0.5) * pi
-     x(3*i-1) = (x(3*i-1) - 0.5) * pi
-     x(3*i-0) = (x(3*i-0) - 0.5) * pi
-     g(3*i-2) = (g(3*i-2) - 0.5) / n
-     g(3*i-1) = (g(3*i-1) - 0.5) / n
-     g(3*i-0) = (g(3*i-0) - 0.5) / n
-     u(3*i-2) = 0
-     u(3*i-1) = 0
-     u(3*i-0) = 0
+  call random_number(xi)
+  call random_number(xj)
+  call random_number(gj)
+  do i = 1,nj
+     gj(3*i-2) = (gj(3*i-2) - 0.5) / ni
+     gj(3*i-1) = (gj(3*i-1) - 0.5) / ni
+     gj(3*i-0) = (gj(3*i-0) - 0.5) / ni
+  enddo
+  do i = 1,ni
+     ui(3*i-2) = 0
+     ui(3*i-1) = 0
+     ui(3*i-0) = 0
+     ud(3*i-2) = 0
+     ud(3*i-1) = 0
+     ud(3*i-0) = 0
   enddo
   call fmm_init()
-  call fmm_partition(n,x,g,u)
-  call fmm_biot_savart(n,x,g,u)
-  call direct_biot_savart(n,x,g,ud)
+  call fmm_partition(ni,xi,nj,xj,gj)
+  call fmm_biot_savart(ni,xi,ui,nj,xj,gj)
+  call direct_biot_savart(ni,xi,ud,nj,xj,gj)
   diff = 0
   norm = 0
-  do i = 1,n
-     diff = diff + (u(3*i-2) - ud(3*i-2)) ** 2
-     diff = diff + (u(3*i-1) - ud(3*i-1)) ** 2
-     diff = diff + (u(3*i-0) - ud(3*i-0)) ** 2
+  do i = 1,ni
+     diff = diff + (ui(3*i-2) - ud(3*i-2)) ** 2
+     diff = diff + (ui(3*i-1) - ud(3*i-1)) ** 2
+     diff = diff + (ui(3*i-0) - ud(3*i-0)) ** 2
      norm = norm + ud(3*i-2) ** 2
      norm = norm + ud(3*i-1) ** 2
      norm = norm + ud(3*i-0) ** 2
@@ -47,5 +50,5 @@ program main
   print '(a,es12.5)',"error         :",sqrt(diff/norm)
   call mpi_finalize(ierr)
   call fmm_finalize()
-  deallocate( x,g,u,ud )
+  deallocate( xi,ui,ud,xj,gj )
 end program main
