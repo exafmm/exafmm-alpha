@@ -51,13 +51,14 @@ extern "C" void fmm_partition_(int & ni, double * xi, int & nj, double * xj, dou
   FMM->stopTimer("Partition    ",printNow);
 
   ni = bodies.size();
+  nj = jbodies.size();
+  assert(ni*nj != 0);
   B=bodies.begin();
   for(int b=0; b<ni; b++,B++) {
     for (int d=0; d<3; d++) {
       xi[3*b+d] = B->X[d];
     }
   }
-  nj = jbodies.size();
   B=jbodies.begin();
   for(int b=0; b<nj; b++,B++) {
     for (int d=0; d<3; d++) {
