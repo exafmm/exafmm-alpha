@@ -15,68 +15,98 @@ extern "C" void fmm_finalize_() {
   delete FMM;
 }
 
-extern "C" void fmm_partition_(int & numBodies, double * x, double * g, double * u) {
+extern "C" void fmm_partition_(int & ni, double * xi, int & nj, double * xj, double * gj) {
   bool printNow = MPIRANK == 0;
   FMM->startTimer("Set bodies   ");
-  Bodies bodies(numBodies);
+  Bodies bodies(ni);
   B_iter B=bodies.begin();
-  for (int b=0; b<numBodies; b++,B++) {
+  for (int b=0; b<ni; b++,B++) {
     B->IBODY = b;
-    B->IPROC = MPIRANK;
+    B->IPROC = 0;
     for (int d=0; d<3; d++) {
-      B->X[d] = x[3*b+d];
-      B->SRC[d] = g[3*b+d];
+      B->X[d] = xi[3*b+d];
     }
-    B->SRC[3] = 1e-6;
+  }
+  Bodies jbodies(nj);
+  B=jbodies.begin();
+  for (int b=0; b<nj; b++,B++) {
+    B->IBODY = b;
+    B->IPROC = 0;
+    for (int d=0; d<3; d++) {
+      B->X[d] = xj[3*b+d];
+      B->SRC[d] = gj[3*b+d];
+    }
   }
   FMM->stopTimer("Set bodies   ",printNow);
 
   FMM->startTimer("Set domain   ");
+  bodies.insert(bodies.end(),jbodies.begin(),jbodies.end());
   FMM->setGlobDomain(bodies);
+  bodies.resize(ni);
   FMM->stopTimer("Set domain   ",printNow);
 
   FMM->startTimer("Partition    ");
   FMM->octsection(bodies);
+  FMM->octsection(jbodies);
   FMM->stopTimer("Partition    ",printNow);
 
-  numBodies = bodies.size();
+  ni = bodies.size();
+  nj = jbodies.size();
+  assert(ni*nj != 0);
   B=bodies.begin();
-  for(int b=0; b<numBodies; b++,B++) {
+  for(int b=0; b<ni; b++,B++) {
     for (int d=0; d<3; d++) {
-      x[3*b+d] = B->X[d];
-      g[3*b+d] = B->SRC[d];
+      xi[3*b+d] = B->X[d];
+    }
+  }
+  B=jbodies.begin();
+  for(int b=0; b<nj; b++,B++) {
+    for (int d=0; d<3; d++) {
+      xj[3*b+d] = B->X[d];
+      gj[3*b+d] = B->SRC[d];
     }
   }
 }
 
-extern "C" void fmm_biot_savart_(int & numBodies, double * x, double * g, double * u) {
+extern "C" void fmm_biot_savart_(int & ni, double * xi, double * ui, int & nj, double * xj, double * gj) {
   bool printNow = MPIRANK == 0;
   FMM->startTimer("Set bodies   ");
-  Bodies bodies(numBodies);
+  Bodies bodies(ni);
   B_iter B=bodies.begin();
-  for (int b=0; b<numBodies; b++,B++) {
+  for (int b=0; b<ni; b++,B++) {
     B->IBODY = b;
+    B->IPROC = 0;
     for (int d=0; d<3; d++) {
-      B->X[d] = x[3*b+d];
-      B->SRC[d] = g[3*b+d];
+      B->X[d] = xi[3*b+d];
+    }
+    B->TRG = 0;
+  }
+  Bodies jbodies(nj);
+  B=jbodies.begin();
+  for (int b=0; b<nj; b++,B++) {
+    B->IBODY = b;
+    B->IPROC = 0;
+    for (int d=0; d<3; d++) {
+      B->X[d] = xj[3*b+d];
+      B->SRC[d] = gj[3*b+d];
     }
     B->SRC[3] = 1e-6;
-    B->TRG = 0;
   }
   FMM->stopTimer("Set bodies   ",printNow);
 
   FMM->startTimer("Build tree   ");
-  Cells cells;
+  Cells cells, jcells;
   FMM->bottomup(bodies,cells);
+  FMM->bottomup(jbodies,jcells);
   FMM->stopTimer("Build tree   ",printNow);
 
   FMM->startTimer("Set LET      ");
-  FMM->setCommBodies(cells);
+  Bodies jbodies2 = jbodies; // Remove this
+  Cells jcells2 = jcells; // Remove this
+  FMM->setCommBodies(jcells);
   FMM->stopTimer("Set LET      ",printNow);
 
   FMM->startTimer("Send LET     ");
-  Bodies jbodies;
-  Cells jcells = cells;
   if( MPISIZE != 1 ) {
 #pragma omp parallel sections num_threads(2)
     {
@@ -89,8 +119,8 @@ extern "C" void fmm_biot_savart_(int & numBodies, double * x, double * g, double
         FMM->updateBodies();
       }
     }
-    jbodies = bodies;
-    jcells = cells;
+    jbodies = jbodies2;
+    jcells = jcells2;
     FMM->commCells(jbodies,jcells);
     FMM->eraseLocalTree(jcells);
   }
@@ -102,33 +132,41 @@ extern "C" void fmm_biot_savart_(int & numBodies, double * x, double * g, double
 
   FMM->startTimer("Get bodies   ");
   B=bodies.begin();
-  for(int b=0; b<numBodies; b++,B++) {
+  for(int b=0; b<ni; b++,B++) {
     for (int d=0; d<3; d++) {
-      u[3*B->IBODY+d] = B->TRG[d];
+      ui[3*B->IBODY+d] = B->TRG[d];
     }
   }
   FMM->stopTimer("Get bodies   ",printNow);
 }
 
-extern "C" void direct_biot_savart_(int & numBodies, double * x, double * g, double * u) {
+extern "C" void direct_biot_savart_(int & ni, double * xi, double * ui, int & nj, double * xj, double * gj) {
   bool printNow = MPIRANK == 0;
   FMM->startTimer("Set bodies   ");
-  Bodies bodies(numBodies);
+  Bodies bodies(ni);
   B_iter B=bodies.begin();
-  for (int b=0; b<numBodies; b++,B++) {
+  for (int b=0; b<ni; b++,B++) {
     B->IBODY = b;
     B->IPROC = 0;
     for (int d=0; d<3; d++) {
-      B->X[d] = x[3*b+d];
-      B->SRC[d] = g[3*b+d];
+      B->X[d] = xi[3*b+d];
+    }
+    B->TRG = 0;
+  }
+  Bodies jbodies(nj);
+  B=jbodies.begin();
+  for (int b=0; b<nj; b++,B++) {
+    B->IBODY = b;
+    B->IPROC = 0;
+    for (int d=0; d<3; d++) {
+      B->X[d] = xj[3*b+d];
+      B->SRC[d] = gj[3*b+d];
     }
     B->SRC[3] = 1e-6;
-    B->TRG = 0;
   }
   FMM->stopTimer("Set bodies   ",printNow);
 
   FMM->startTimer("Direct sum   ");
-  Bodies jbodies = bodies;
   for( int i=0; i!=MPISIZE; ++i ) {
     FMM->shiftBodies(jbodies);
     FMM->evalP2P(bodies,jbodies);
@@ -138,9 +176,9 @@ extern "C" void direct_biot_savart_(int & numBodies, double * x, double * g, dou
 
   FMM->startTimer("Get bodies   ");
   B=bodies.begin();
-  for(int b=0; b<numBodies; b++,B++) {
+  for(int b=0; b<ni; b++,B++) {
     for (int d=0; d<3; d++) {
-      u[3*B->IBODY+d] = B->TRG[d];
+      ui[3*B->IBODY+d] = B->TRG[d];
     }
   }
   FMM->stopTimer("Get bodies   ",printNow);
