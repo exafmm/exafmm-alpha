@@ -9,7 +9,7 @@ lib_serial: serial_wrapper.o $(OBJECT)
 	ranlib libfmm.a
 
 test_serial: test_serial.o
-	$(FC) $? $(LFLAGS) -L. -lfmm
+	$(FC) $? -L. -lfmm $(LFLAGS)
 	./a.out
 
 parallel: parallel.o $(OBJECT)
@@ -21,7 +21,7 @@ lib_parallel: parallel_wrapper.o $(OBJECT)
 	ranlib libfmm.a
 
 test_parallel: test_parallel.o
-	$(FC) $? $(LFLAGS) -L. -lfmm
+	$(FC) $? -L. -lfmm $(LFLAGS)
 	mpirun -np 2 ./a.out
 
 clean:
