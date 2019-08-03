@@ -1,6 +1,6 @@
 program main
   implicit none
-  integer i,ni,nj
+  integer i,ni,nj,images
   integer,dimension (128) :: iseed
   real(8) diff,norm
   real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj
@@ -57,7 +57,8 @@ program main
   enddo
   close(50)
 
-  call fmm_init()
+  images = 3
+  call fmm_init(images)
   call fmm_biot_savart(ni,xi,ui,nj,xj,gj)
   call direct_biot_savart(ni,xi,ud,nj,xj,gj)
   diff = 0

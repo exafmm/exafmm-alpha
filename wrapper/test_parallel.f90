@@ -1,7 +1,7 @@
 program main
   implicit none
   include 'mpif.h'
-  integer i,n,ierr,mpisize,mpirank
+  integer i,n,images,ierr,mpisize,mpirank
   integer,dimension (128) :: iseed
   real(8) diff,norm
   real(8),parameter :: pi=3.14159265358979312d0
@@ -28,7 +28,8 @@ program main
      u(3*i-1) = 0
      u(3*i-0) = 0
   enddo
-  call fmm_init()
+  images = 3
+  call fmm_init(images)
   call fmm_partition(n,x,g,u)
   call fmm_biot_savart(n,x,g,u)
   call direct_biot_savart(n,x,g,ud)

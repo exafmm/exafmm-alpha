@@ -2,11 +2,11 @@
 
 ParallelFMM * FMM;
 
-extern "C" void fmm_init_() {
+extern "C" void fmm_init_(int & images) {
   FMM = new ParallelFMM;
   FMM->setKernel("BiotSavart");
   FMM->initialize();
-  FMM->IMAGES = 0;
+  FMM->IMAGES = images;
   FMM->THETA = 1 / sqrtf(4);
 }
 
