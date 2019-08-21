@@ -19,9 +19,6 @@ protected:
   real        timeM2P;                                          //!< M2P execution time
   real        timeP2P;                                          //!< P2P execution time
 
-  int         Iperiodic;                                        //!< Periodic image flag (using each bit for images)
-  const int   Icenter;                                          //!< Periodic image flag at center
-
 private:
 //! Tree walk for treecode
   void treecode(C_iter Ci, C_iter Cj) {
@@ -107,7 +104,7 @@ private:
 
 public:
 //! Constructor
-  Evaluator() : Icenter(1 << 13) {}
+  Evaluator() {}
 //! Destructor
   ~Evaluator() {}
 
@@ -132,8 +129,6 @@ public:
     listM2L.resize(cells.size());                               // Resize M2L interaction list
     listM2P.resize(cells.size());                               // Resize M2P interaction list
     listP2P.resize(cells.size());                               // Resize P2P interaction list
-    Iperiodic = Icenter;                                      //  Set periodic image flag to center
-    Xperiodic = 0;                                            //  Set periodic coordinate offset
     Pair pair(root,jroot);                                    //  Form pair of root cells
     pairs.push(pair);                                         //  Push pair to stack
     while( !pairs.empty() ) {                                 //  While interaction stack is not empty
@@ -331,7 +326,7 @@ public:
   }
 
   void testMACM2L(C_iter Ci, C_iter Cj) {              // Test multipole acceptance criteria for M2L kernel
-    vect dist = Ci->X - Cj->X - Xperiodic;                        // Distance vector between cells
+    vect dist = Ci->X - Cj->X;                        // Distance vector between cells
     real R = std::sqrt(norm(dist));                               // Distance between cells
     if( Ci->R + Cj->R > THETA*R ) {                               // If cell is too large
       Pair pair(Ci,Cj);                                           //  Form pair of interacting cells
@@ -343,7 +338,7 @@ public:
   }
 
   void testMACM2P(C_iter Ci, C_iter Cj) {              // Test multipole acceptance criteria for M2P kernel
-    vect dist = Ci->X - Cj->X - Xperiodic;                        // Distance vector between cells
+    vect dist = Ci->X - Cj->X;                        // Distance vector between cells
     real R = std::sqrt(norm(dist));                               // Distance between cells
     if( Ci->NCHILD != 0 || Ci->R + Cj->R > THETA*R ) {            // If target is not twig or cell is too large
       Pair pair(Ci,Cj);                                           //  Form pair of interacting cells

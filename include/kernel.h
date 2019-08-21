@@ -20,7 +20,6 @@ protected:
   C_iter      CJ;                                               //!< Source cell iterator
   vect        X0;                                               //!< Center of root cell
   real        R0;                                               //!< Radius of root cell
-  vect        Xperiodic;                                        //!< Coordinate offset of periodic image
 
   int                  ATOMS;                                   //!< Number of atom types in Van der Waals
   std::vector<real>    RSCALE;                                  //!< Scaling parameter for Van der Waals
