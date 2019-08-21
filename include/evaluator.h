@@ -21,9 +21,6 @@ protected:
 
   int         Iperiodic;                                        //!< Periodic image flag (using each bit for images)
   const int   Icenter;                                          //!< Periodic image flag at center
-  Maps        flagM2L;                                          //!< Existance of periodic image for M2L
-  Maps        flagM2P;                                          //!< Existance of periodic image for M2P
-  Maps        flagP2P;                                          //!< Existance of periodic image for P2P
 
 private:
 //! Tree walk for treecode
@@ -117,17 +114,13 @@ public:
 //! Add single list for kernel unit test
   void addM2L(C_iter Cj) {
     listM2L.resize(1);                                          // Resize vector of M2L interation lists
-    flagM2L.resize(1);                                          // Resize vector of M2L periodic image flags
     listM2L[0].push_back(Cj);                                   // Push single cell into list
-    flagM2L[0][Cj] |= Icenter;                                  // Flip bit of periodic image flag
   }
 
 //! Add single list for kernel unit test
   void addM2P(C_iter Cj) {
     listM2P.resize(1);                                          // Resize vector of M2P interation lists
-    flagM2P.resize(1);                                          // Resize vector of M2L periodic image flags
     listM2P[0].push_back(Cj);                                   // Push single cell into list
-    flagM2P[0][Cj] |= Icenter;                                  // Flip bit of periodic image flag
   }
 
 //! Traverse tree to get interaction list
@@ -139,9 +132,6 @@ public:
     listM2L.resize(cells.size());                               // Resize M2L interaction list
     listM2P.resize(cells.size());                               // Resize M2P interaction list
     listP2P.resize(cells.size());                               // Resize P2P interaction list
-    flagM2L.resize(cells.size());                               // Resize M2L periodic image flag
-    flagM2P.resize(cells.size());                               // Resize M2P periodic image flag
-    flagP2P.resize(cells.size());                               // Resize P2P periodic image flag
     Iperiodic = Icenter;                                      //  Set periodic image flag to center
     Xperiodic = 0;                                            //  Set periodic coordinate offset
     Pair pair(root,jroot);                                    //  Form pair of root cells
@@ -208,7 +198,7 @@ public:
     stopTimer("Set sourceC  ");                                   // Stop timer
   }
 
-  void setTargetBody(Lists lists, Maps flags) {        // Set target buffer for bodies
+  void setTargetBody(Lists lists) {        // Set target buffer for bodies
     startTimer("Set targetB  ");                                  // Start timer
     int key = 0;                                                  // Initialize key to range of coefs in source cells
     for( CI=CIB; CI!=CIE; ++CI ) {                                // Loop over target cells
@@ -225,7 +215,7 @@ public:
           CJ = *L;                                                //   Set source cell
           rangeHost.push_back(sourceBegin[CJ]);                   //    Set begin index of coefs in source cell
           rangeHost.push_back(sourceSize[CJ]);                    //    Set number of coefs in source cell
-          rangeHost.push_back(flags[CI-CI0][CJ]);                 //    Set periodic image flag of source cell
+          rangeHost.push_back(0);                 //    Set periodic image flag of source cell
         }                                                         //   End loop over interaction list
         targetBegin[CI] = targetHost.size() / 6;                  //   Key : iterator, Value : offset of target leafs
         for( B_iter B=BI0; B!=BIN; ++B ) {                        //   Loop over leafs in target cell
@@ -250,7 +240,7 @@ public:
     stopTimer("Set targetB  ");                                   // Stop timer
   }
 
-  void setTargetCell(Lists lists, Maps flags) {        // Set target buffer for cells
+  void setTargetCell(Lists lists) {        // Set target buffer for cells
     startTimer("Set targetC  ");                                  // Start timer
     int key = 0;                                                  // Initialize key to range of coefs in target cells
     for( CI=CIB; CI!=CIE; ++CI ) {                                // Loop over target cells
@@ -264,7 +254,7 @@ public:
           int size = sourceSize[CJ];                              //    Get number of coefs in source cell
           rangeHost.push_back(begin);                             //    Set begin index of coefs in source cell
           rangeHost.push_back(size);                              //    Set number of coefs in source cell
-          rangeHost.push_back(flags[CI-CI0][CJ]);                 //    Set periodic image flag of source cell
+          rangeHost.push_back(0);                 //    Set periodic image flag of source cell
         }                                                         //   End loop over interaction list
         targetBegin[CI] = targetHost.size();                      //   Key : iterator, Value : offset of target coefs
         targetHost.push_back(CI->X[0]);                           //   Copy x position to GPU buffer
@@ -337,7 +327,6 @@ public:
 
   void testMACP2P(C_iter Ci, C_iter Cj) {              // Test multipole acceptance criteria for P2P kernel
     listP2P[Ci-CI0].push_back(Cj);                                // Push source cell into P2P interaction list
-    flagP2P[Ci-CI0][Cj] |= Iperiodic;                             // Flip bit of periodic image flag
     NP2P++;                                                       // Count P2P kernel execution
   }
 
@@ -349,7 +338,6 @@ public:
       pairs.push(pair);                                           //  Push interacting pair into stack
     } else {                                                      // If cell is small enough
       listM2L[Ci-CI0].push_back(Cj);                              //  Push source cell into M2L interaction list
-      flagM2L[Ci-CI0][Cj] |= Iperiodic;                           //  Flip bit of periodic image flag
       NM2L++;                                                     //  Count M2L kernel execution
     }                                                             // Endif for interaction
   }
@@ -362,7 +350,6 @@ public:
       pairs.push(pair);                                           //  Push interacting pair into stack
     } else {                                                      // If target is twig and cell is small enough
       listM2P[Ci-CI0].push_back(Cj);                              //  Push source cell into M2P interaction list
-      flagM2P[Ci-CI0][Cj] |= Iperiodic;                           //  Flip bit of periodic image flag
       NM2P++;                                                     //  Count M2P kernel execution
     }                                                             // Endif for interaction
   }
@@ -390,9 +377,6 @@ public:
     listM2L.resize(icells.size());                                // Resize M2L interaction list
     listM2P.resize(icells.size());                                // Resize M2P interaction list
     listP2P.resize(icells.size());                                // Resize P2P interaction list
-    flagM2L.resize(icells.size());                                // Resize M2L periodic image flag
-    flagM2P.resize(icells.size());                                // Resize M2P periodic image flag
-    flagP2P.resize(icells.size());                                // Resize P2P periodic image flag
     for( C_iter Ci=icells.begin(); Ci!=icells.end(); ++Ci ) {     // Loop over target cells
       for( C_iter Cj=jcells.begin(); Cj!=jcells.end(); ++Cj ) {   //  Loop over source cells
         listP2P[Ci-CI0].push_back(Cj);                            //   Push source cell into P2P interaction list
@@ -422,59 +406,54 @@ public:
       for( int jcall=0; jcall!=numJcall; ++jcall ) {              //  Loop over jcall
         BJ0 = jbodies.begin()+joffset;                            //  Set source bodies begin iterator
         BJN = jbodies.begin()+std::min(joffset+MAXBODY,int(jbodies.size()));// Set source bodies end iterator
-        if( onCPU ) {                                             //  If calculation is to be done on CPU
-          Xperiodic = 0;                                          //   Set periodic coordinate offset
-          selectP2P_CPU();                                        //   Select P2P_CPU kernel
-        } else {                                                  //  If calculation is to be done on GPU
-          constHost.push_back(2*R0);                              //   Copy domain size to GPU buffer
-          for( B_iter B=BJ0; B!=BJN; ++B ) {                      //   Loop over source bodies
-            sourceHost.push_back(B->X[0]);                        //   Copy x position to GPU buffer
-            sourceHost.push_back(B->X[1]);                        //   Copy y position to GPU buffer
-            sourceHost.push_back(B->X[2]);                        //   Copy z position to GPU buffer
-            sourceHost.push_back(B->SRC[0]);                      //   Copy 1st source value to GPU buffer
-            sourceHost.push_back(B->SRC[1]);                      //   Copy 2nd source value to GPU buffer
-            sourceHost.push_back(B->SRC[2]);                      //   Copy 3rd source value to GPU buffer
-            sourceHost.push_back(B->SRC[3]);                      //   Copy 4th source value to GPU buffer
-          }                                                       //   End loop over source bodies
-          int key = 0;                                            //   Initialize key to range of leafs in source cells
-          int blocks = (BIN - BI0 - 1) / THREADS + 1;             //   Number of thread blocks needed for this target cell
-          for( int i=0; i!=blocks; ++i ) {                        //   Loop over thread blocks
-            keysHost.push_back(key);                              //    Save key to range of leafs in source cells
-          }                                                       //   End loop over thread blocks
-          rangeHost.push_back(1);                                 //   Save size of interaction list
-          rangeHost.push_back(0);                                 //   Set begin index of leafs
-          rangeHost.push_back(BJN-BJ0);                           //   Set number of leafs
-          rangeHost.push_back(Icenter);                           //   Set periodic image flag
-          for( B_iter B=BI0; B!=BIN; ++B ) {                      //   Loop over target bodies
-            targetHost.push_back(B->X[0]);                        //    Copy x position to GPU buffer
-            targetHost.push_back(B->X[1]);                        //    Copy y position to GPU buffer
-            targetHost.push_back(B->X[2]);                        //    Copy z position to GPU buffer
-            targetHost.push_back(B->SRC[0]);                      //    Copy 1st target value to GPU buffer
-            targetHost.push_back(B->SRC[1]);                      //    Copy 2nd target value to GPU buffer
-            targetHost.push_back(B->SRC[2]);                      //    Copy 3rd target value to GPU buffer
-          }                                                       //   End loop over target bodies
-          int numPad = blocks * THREADS - (BIN - BI0);            //   Number of elements to pad in target GPU buffer
-          for( int i=0; i!=numPad; ++i ) {                        //   Loop over elements to pad
-            targetHost.push_back(0);                              //    Pad x position in GPU buffer
-            targetHost.push_back(0);                              //    Pad y position in GPU buffer
-            targetHost.push_back(0);                              //    Pad z position in GPU buffer
-            targetHost.push_back(0);                              //    Pad 1st target value to GPU buffer
-            targetHost.push_back(0);                              //    Pad 2nd target value to GPU buffer
-            targetHost.push_back(0);                              //    Pad 3rd target value to GPU buffer
-          }                                                       //   End loop over elements to pad
-          selectP2P();                                            //   Select P2P kernel
-          for( B_iter B=BI0; B!=BIN; ++B ) {                      //    Loop over target bodies
-            B->TRG[0] += targetHost[6*(B-BI0)+0];                 //     Copy 1st target value from GPU buffer
-            B->TRG[1] += targetHost[6*(B-BI0)+1];                 //     Copy 2nd target value from GPU buffer
-            B->TRG[2] += targetHost[6*(B-BI0)+2];                 //     Copy 3rd target value from GPU buffer
-            B->TRG[3] += targetHost[6*(B-BI0)+3];                 //     Copy 4th target value from GPU buffer
-          }                                                       //   Endif for Gaussian kernel
-          keysHost.clear();                                       //   Clear keys vector
-          rangeHost.clear();                                      //   Clear range vector
-          constHost.clear();                                      //   Clear const vector
-          targetHost.clear();                                     //   Clear target vector
-          sourceHost.clear();                                     //   Clear source vector
-        }                                                         //  Endif for CPU/GPU switch
+        constHost.push_back(2*R0);                              //   Copy domain size to GPU buffer
+        for( B_iter B=BJ0; B!=BJN; ++B ) {                      //   Loop over source bodies
+          sourceHost.push_back(B->X[0]);                        //   Copy x position to GPU buffer
+          sourceHost.push_back(B->X[1]);                        //   Copy y position to GPU buffer
+          sourceHost.push_back(B->X[2]);                        //   Copy z position to GPU buffer
+          sourceHost.push_back(B->SRC[0]);                      //   Copy 1st source value to GPU buffer
+          sourceHost.push_back(B->SRC[1]);                      //   Copy 2nd source value to GPU buffer
+          sourceHost.push_back(B->SRC[2]);                      //   Copy 3rd source value to GPU buffer
+          sourceHost.push_back(B->SRC[3]);                      //   Copy 4th source value to GPU buffer
+        }                                                       //   End loop over source bodies
+        int key = 0;                                            //   Initialize key to range of leafs in source cells
+        int blocks = (BIN - BI0 - 1) / THREADS + 1;             //   Number of thread blocks needed for this target cell
+        for( int i=0; i!=blocks; ++i ) {                        //   Loop over thread blocks
+          keysHost.push_back(key);                              //    Save key to range of leafs in source cells
+        }                                                       //   End loop over thread blocks
+        rangeHost.push_back(1);                                 //   Save size of interaction list
+        rangeHost.push_back(0);                                 //   Set begin index of leafs
+        rangeHost.push_back(BJN-BJ0);                           //   Set number of leafs
+        rangeHost.push_back(0);                           //   Set periodic image flag
+        for( B_iter B=BI0; B!=BIN; ++B ) {                      //   Loop over target bodies
+          targetHost.push_back(B->X[0]);                        //    Copy x position to GPU buffer
+          targetHost.push_back(B->X[1]);                        //    Copy y position to GPU buffer
+          targetHost.push_back(B->X[2]);                        //    Copy z position to GPU buffer
+          targetHost.push_back(B->SRC[0]);                      //    Copy 1st target value to GPU buffer
+          targetHost.push_back(B->SRC[1]);                      //    Copy 2nd target value to GPU buffer
+          targetHost.push_back(B->SRC[2]);                      //    Copy 3rd target value to GPU buffer
+        }                                                       //   End loop over target bodies
+        int numPad = blocks * THREADS - (BIN - BI0);            //   Number of elements to pad in target GPU buffer
+        for( int i=0; i!=numPad; ++i ) {                        //   Loop over elements to pad
+          targetHost.push_back(0);                              //    Pad x position in GPU buffer
+          targetHost.push_back(0);                              //    Pad y position in GPU buffer
+          targetHost.push_back(0);                              //    Pad z position in GPU buffer
+          targetHost.push_back(0);                              //    Pad 1st target value to GPU buffer
+          targetHost.push_back(0);                              //    Pad 2nd target value to GPU buffer
+          targetHost.push_back(0);                              //    Pad 3rd target value to GPU buffer
+        }                                                       //   End loop over elements to pad
+        selectP2P();                                            //   Select P2P kernel
+        for( B_iter B=BI0; B!=BIN; ++B ) {                      //    Loop over target bodies
+          B->TRG[0] += targetHost[6*(B-BI0)+0];                 //     Copy 1st target value from GPU buffer
+          B->TRG[1] += targetHost[6*(B-BI0)+1];                 //     Copy 2nd target value from GPU buffer
+          B->TRG[2] += targetHost[6*(B-BI0)+2];                 //     Copy 3rd target value from GPU buffer
+          B->TRG[3] += targetHost[6*(B-BI0)+3];                 //     Copy 4th target value from GPU buffer
+        }                                                       //   Endif for Gaussian kernel
+        keysHost.clear();                                       //   Clear keys vector
+        rangeHost.clear();                                      //   Clear range vector
+        constHost.clear();                                      //   Clear const vector
+        targetHost.clear();                                     //   Clear target vector
+        sourceHost.clear();                                     //   Clear source vector
         joffset += MAXBODY;                                       //  Increment jcall offset
       }                                                           // End loop over jcall
       ioffset += MAXBODY;                                         // Increment icall offset
@@ -492,18 +471,16 @@ public:
       constHost.push_back(2*R0);                                  //  Copy domain size to GPU buffer
       startTimer("Get list     ");                                //  Start timer
       Lists listP2M(cells.size());                                //  Define P2M interation list vector
-      Maps  flagP2M(cells.size());                                //  Define P2M periodic image flag
       for( CI=CIB; CI!=CIE; ++CI ) {                              //  Loop over target cells
         CI->M = CI->L = 0;                                        //   Initialize multipole & local coefficients
         if( CI->NCHILD == 0 ) {                                   //   If cell is a twig
           listP2M[CI-CI0].push_back(CI);                          //    Push source cell into P2M interaction list
-          flagP2M[CI-CI0][CI] |= Icenter;                         //    Flip bit of periodic image flag
           sourceSize[CI] = CI->NLEAF;                             //    Key : iterator, Value : number of leafs
         }                                                         //   End loop over cells topdown
       }                                                           //  End loop over source map
       stopTimer("Get list     ");                                 //  Stop timer
       setSourceBody();                                            //  Set source buffer for bodies
-      setTargetCell(listP2M,flagP2M);                             //  Set target buffer for cells
+      setTargetCell(listP2M);                             //  Set target buffer for cells
       selectP2M();                                                //  Select P2M kernel
       getTargetCell(listP2M);                                     //  Get body values from target buffer
       clearBuffers();                                             //  Clear GPU buffers
@@ -524,20 +501,18 @@ public:
         constHost.push_back(2*R0);                                //   Copy domain size to GPU buffer
         startTimer("Get list     ");                              //   Start timer
         Lists listM2M(cells.size());                              //   Define M2M interation list vector
-        Maps  flagM2M(cells.size());                              //   Define M2M periodic image flag
         for( CI=CIB; CI!=CIE; ++CI ) {                            //   Loop over cells bottomup (except root cell)
           if( getLevel(CI->ICELL) == level ) {                    //    If target cell is at current level
             for( int i=0; i<CI->NCHILD; ++i ) {                   //     Loop over child cells
               CJ = CI0 + CI->CHILD[i];                            //      Set iterator for source cell
               listM2M[CI-CI0].push_back(CJ);                      //      Push source cell into M2M interaction list
-              flagM2M[CI-CI0][CJ] |= Icenter;                     //      Flip bit of periodic image flag
               sourceSize[CJ] = 2 * NCOEF;                         //      Key : iterator, Value : number of coefs
             }                                                     //     End loop over child cells
           }                                                       //    Endif for current level
         }                                                         //   End loop over cells
         stopTimer("Get list     ");                               //   Stop timer
         setSourceCell();                                          //   Set source buffer for cells
-        setTargetCell(listM2M,flagM2M);                           //   Set target buffer for cells
+        setTargetCell(listM2M);                           //   Set target buffer for cells
         selectM2M();                                              //   Select M2M kernel
         getTargetCell(listM2M);                                   //   Get body values from target buffer
         clearBuffers();                                           //   Clear GPU buffers
@@ -565,14 +540,13 @@ public:
       }                                                           //  End loop over target cells
       stopTimer("Get list     ");                                 //  Stop timer
       setSourceCell();                                            //  Set source buffer for cells
-      setTargetCell(listM2L,flagM2L);                             //  Set target buffer for cells
+      setTargetCell(listM2L);                             //  Set target buffer for cells
       selectM2L();                                                //  Select M2L kernel
       getTargetCell(listM2L,false);                               //  Get body values from target buffer
       clearBuffers();                                             //  Clear GPU buffers
       ioffset += numCell;                                         //  Increment ioffset
     }                                                             // End loop over icall
     listM2L.clear();                                              // Clear interaction lists
-    flagM2L.clear();                                              // Clear periodic image flags
   }
 
   void evalM2P(Cells &cells, bool kernel=false) {            // Evaluate M2P
@@ -593,14 +567,13 @@ public:
       }                                                           //  End loop over target cells
       stopTimer("Get list     ");                                 //  Stop timer
       setSourceCell();                                            //  Set source buffer for cells
-      setTargetBody(listM2P,flagM2P);                             //  Set target buffer for bodies
+      setTargetBody(listM2P);                             //  Set target buffer for bodies
       selectM2P();                                                //  Select M2P kernel
       getTargetBody(listM2P);                                     //  Get body values from target buffer
       clearBuffers();                                             //  Clear GPU buffers
       ioffset += numCell;                                         //  Increment ioffset
     }                                                             // End loop over icall
     listM2P.clear();                                              // Clear interaction lists
-    flagM2P.clear();                                              // Clear periodic image flags
   }
 
   void evalP2P(Cells &cells, bool kernel=false) {            // Evaluate P2P
@@ -621,14 +594,13 @@ public:
       }                                                           //  End loop over target cells
       stopTimer("Get list     ");                                 //  Stop timer
       setSourceBody();                                            //  Set source buffer for bodies
-      setTargetBody(listP2P,flagP2P);                             //  Set target buffer for bodies
+      setTargetBody(listP2P);                             //  Set target buffer for bodies
       selectP2P();                                                //  Select P2P kernel
       getTargetBody(listP2P);                                     //  Get body values from target buffer
       clearBuffers();                                             //  Clear GPU buffers
       ioffset += numCell;                                         //  Increment ioffset
     }                                                             // End loop over icall
     listP2P.clear();                                              // Clear interaction lists
-    flagP2P.clear();                                              // Clear periodic image flags
   }
 
   void evalL2L(Cells &cells) {                         // Evaluate L2L
@@ -645,12 +617,10 @@ public:
         constHost.push_back(2*R0);                                //   Copy domain size to GPU buffer
         startTimer("Get list     ");                              //   Start timer
         Lists listL2L(cells.size());                              //   Define L2L interation list vector
-        Maps  flagL2L(cells.size());                              //   Define L2L periodic image flag
         for( CI=CIE-2; CI!=CIB-1; --CI ) {                        //   Loop over cells topdown (except root cell)
           if( getLevel(CI->ICELL) == level ) {                    //    If target cell is at current level
             CJ = CI0 + CI->PARENT;                                //     Set source cell iterator
             listL2L[CI-CI0].push_back(CJ);                        //     Push source cell into L2L interaction list
-            flagL2L[CI-CI0][CJ] |= Icenter;                       //     Flip bit of periodic image flag
             if( sourceSize[CJ] == 0 ) {                           //     If the source cell has not been stored yet
               sourceSize[CJ] = 2 * NCOEF;                         //      Key : iterator, Value : number of coefs
             }                                                     //     Endif for current level
@@ -658,7 +628,7 @@ public:
         }                                                         //   End loop over cells topdown
         stopTimer("Get list     ");                               //   Stop timer
         setSourceCell(false);                                     //   Set source buffer for cells
-        setTargetCell(listL2L,flagL2L);                           //   Set target buffer for cells
+        setTargetCell(listL2L);                           //   Set target buffer for cells
         selectL2L();                                              //   Select L2L kernel
         getTargetCell(listL2L,false);                             //   Get body values from target buffer
         clearBuffers();                                           //   Clear GPU buffers
@@ -679,17 +649,15 @@ public:
       constHost.push_back(2*R0);                                  //  Copy domain size to GPU buffer
       startTimer("Get list     ");                                //  Start timer
       Lists listL2P(cells.size());                                //  Define L2P interation list vector
-      Maps  flagL2P(cells.size());                                //  Define L2P periodic image flag
       for( CI=CIB; CI!=CIE; ++CI ) {                              //  Loop over cells
         if( CI->NCHILD == 0 ) {                                   //   If cell is a twig evaluate L2P kernel
           listL2P[CI-CI0].push_back(CI);                          //    Push source cell into L2P interaction list
-          flagL2P[CI-CI0][CI] |= Icenter;                         //    Flip bit of periodic image flag
           sourceSize[CI] = 2 * NCOEF;                             //    Key : iterator, Value : number of coefs
         }                                                         //   Endif for twig cells
       }                                                           //  End loop over cells topdown
       stopTimer("Get list     ");                                 //  Stop timer
       setSourceCell(false);                                       //  Set source buffer for cells
-      setTargetBody(listL2P,flagL2P);                             //  Set target buffer for bodies
+      setTargetBody(listL2P);                             //  Set target buffer for bodies
       selectL2P();                                                //  Select L2P kernel
       getTargetBody(listL2P);                                     //  Get body values from target buffer
       clearBuffers();                                             //  Clear GPU buffers
