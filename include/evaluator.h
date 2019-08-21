@@ -121,14 +121,6 @@ public:
   void setKernel(std::string name) {
     if( name == "Laplace" ) {                                   //  If Laplace
       kernelName = Laplace;                                     //   Set kernel name to Laplace
-    } else if( name == "BiotSavart" ) {                         //  If BiotSavart
-      kernelName = BiotSavart;                                  //   Set kernel name to BiotSavart
-    } else if( name == "Stretching" ) {                         //  If Stretching
-      kernelName = Stretching;                                  //   Set kernel name to Stretching
-    } else if( name == "Gaussian" ) {                           //  If Gaussian
-      kernelName = Gaussian;                                    //   Set kernel name to Gaussian
-    } else if( name == "CoulombVdW" ) {                         //  If CoulombVdW
-      kernelName = CoulombVdW;                                  //   Set kernel name to CoulombVdW
     }
   }
 
@@ -287,38 +279,12 @@ public:
 
 //! Initialize GPU
   void initialize() {
-    if( kernelName == Laplace ) {                               // If Laplace kernel
-      LaplaceInit();                                            //  Initialize GPU
-    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
-      BiotSavartInit();                                         //  Initialize GPU
-    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
-      StretchingInit();                                         //  Initialize GPU
-    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
-      GaussianInit();                                           //  Initialize GPU
-    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
-      CoulombVdWInit();                                         //  Initialize GPU
-    } else {                                                    // If kernel is none of the above
-      if(MPIRANK == 0) std::cout << "Invalid kernel type in initialize" << std::endl;// Invalid kernel type
-      abort();                                                  //  Abort execution
-    }                                                           // Endif for kernel type
+    LaplaceInit();
   }
 
 //! Finalize GPU
   void finalize() {
-    if( kernelName == Laplace ) {                               // If Laplace kernel
-      LaplaceFinal();                                           //  Finalize GPU
-    } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
-      BiotSavartFinal();                                        //  Finalize GPU
-    } else if ( kernelName == Stretching ) {                    // If Stretching kernel
-      StretchingFinal();                                        //  Finalize GPU
-    } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
-      GaussianFinal();                                          //  Finalize GPU
-    } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
-      CoulombVdWFinal();                                        //  Finalize GPU
-    } else {                                                    // If kernel is none of the above
-      if(MPIRANK == 0) std::cout << "Invalid kernel type in finalize" << std::endl;// Invalid kernel type
-      abort();                                                  //  Abort execution
-    }                                                           // Endif for kernel type
+    LaplaceFinal();
   }
 
   void setSourceBody();                                         //!< Set source buffer for bodies
@@ -342,10 +308,6 @@ public:
   void evalL2L(Cells &cells);                                   //!< Evaluate L2L kernel
   void evalL2P(Cells &cells);                                   //!< Evaluate L2P kernel
 };
-#if cpu
-#include "../kernel/cpuEvaluator.cxx"
-#elif gpu
 #include "../kernel/gpuEvaluator.cxx"
-#endif
 
 #endif

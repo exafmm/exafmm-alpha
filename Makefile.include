@@ -3,21 +3,14 @@
 
 CUDA_INSTALL_PATH = /usr/local/cuda
 
-#DEVICE  = cpu
 DEVICE  = gpu
 
 CXX     = mpicxx -g -O3 -std=c++11 -fPIC -fopenmp -ffast-math -funroll-loops -rdynamic -Wfatal-errors -I../include
-#CXX     = mpicxx -g -O3 -std=c++0x -fPIC -fopenmp -ffast-math -funroll-loops -rdynamic -Wfatal-errors -I../include
 NVCC    = nvcc -Xcompiler "-fopenmp -O3" -std=c++11 -use_fast_math -I../include
-FC      = mpiifort -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
-#FC      = mpifort -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
-LFLAGS  = -D$(DEVICE) -lstdc++ -ldl -lm
-ifeq ($(DEVICE),gpu)
+
 LFLAGS  += -lcudart
-endif
-OBJECT  = ../kernel/$(DEVICE)Laplace.o ../kernel/$(DEVICE)BiotSavart.o\
-	../kernel/$(DEVICE)Stretching.o ../kernel/$(DEVICE)Gaussian.o\
-	../kernel/$(DEVICE)CoulombVdW.o
+
+OBJECT  = ../kernel/$(DEVICE)Laplace.o
 
 .cxx.o:
 	$(CXX) -c $? -o $@ $(LFLAGS)
