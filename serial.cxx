@@ -24,7 +24,7 @@ int main() {
   FMM.stopTimer("Set domain   ",printNow);
 
   FMM.startTimer("Build tree   ");
-  FMM.bottomup(bodies,cells);
+  FMM.topdown(bodies,cells);
   FMM.stopTimer("Build tree   ",printNow);
 
   Cells jcells = cells;
