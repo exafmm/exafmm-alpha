@@ -1,8 +1,9 @@
 #ifndef bottomup_h
 #define bottomup_h
+#include "tree.h"
 
 //! Bottomup tree constructor
-class BottomUp : virtual public TreeStructure {
+class BottomUp : public TreeStructure {
 protected:
   int getMaxLevel(Bodies &bodies) {                             // Max level for bottom up tree build
     const long N = bodies.size() * MPISIZE;                     // Number of bodies
