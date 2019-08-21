@@ -8,7 +8,6 @@ int main() {
   Cells cells;
   SerialFMM FMM;
   FMM.initialize();
-  FMM.IMAGES = 0;
   FMM.THETA = .5;
   bool printNow = true;
 

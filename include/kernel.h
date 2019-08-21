@@ -42,7 +42,6 @@ protected:
   complex *YnmTheta;                                            //!< \f$ \theta \f$ derivative of \f$ r^n Y_n^m \f$
   complex *Cnm;                                                 //!< M2L translation matrix \f$ C_{jn}^{km} \f$
 public:
-  int IMAGES;                                                   //!< Number of periodic image sublevels
   real THETA;                                                   //!< Box opening criteria
   real NP2P;                                                    //!< Number of P2P kernel call
   real NM2P;                                                    //!< Number of M2P kernel call
@@ -191,15 +190,6 @@ public:
       R0 = std::max(X0[d] - xmin[d], R0);                       //  Calculate max distance from center
     }                                                           // End loop over each dimension
     R0 += 1e-5;                                                 // Add some leeway to root radius
-    if( IMAGES != 0 ) {                                         // If periodic boundary condition
-      if( X0[0]-R0 < x0[0]-r0 || x0[0]+r0 < X0[0]+R0            //  Check for outliers in x direction
-       || X0[1]-R0 < x0[1]-r0 || x0[1]+r0 < X0[1]+R0            //  Check for outliers in y direction
-       || X0[2]-R0 < x0[2]-r0 || x0[2]+r0 < X0[2]+R0 ) {        //  Check for outliers in z direction
-        std::cout << "Error: Particles located outside periodic domain" << std::endl;// Print error message
-      }                                                         //  End if for outlier checking
-      X0 = x0;                                                  //  Center is [0, 0, 0]
-      R0 = r0;                                                  //  Radius is r0
-    }                                                           // Endif for periodic boundary condition
   }
 
 //! Set scaling paramters in Van der Waals
