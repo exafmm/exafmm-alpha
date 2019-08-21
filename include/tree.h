@@ -178,19 +178,9 @@ public:
   void downward(Cells &cells, Cells &jcells, int method, bool periodic=true) {
     if( method == 2 ) timeKernels();                            // Time all kernels for auto-tuning
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) C->L = 0;// Initialize local coefficients
-    if( IMAGES != 0 ) {                                         // If periodic boundary condition
-      startTimer("Upward P     ");                              //  Start timer
-      upwardPeriodic(jcells);                                   //  Upward phase for periodic images
-      stopTimer("Upward P     ",printNow);                      //  Stop timer & print
-    }                                                           // Endif for periodic boundary condition
     startTimer("Traverse     ");                                // Start timer
     traverse(cells,jcells,method);                              // Traverse tree to get interaction list
     stopTimer("Traverse     ",printNow);                        // Stop timer & print
-    if( IMAGES != 0 && periodic ) {                             // If periodic boundary condition
-      startTimer("Traverse P   ");                              // Start timer
-      traversePeriodic(cells,jcells,method);                    // Traverse tree for periodic images
-      stopTimer("Traverse P   ",printNow);                      // Stop timer & print
-    }                                                           // Endif for periodic boundary condition
     evalM2L(cells);                                             // Evaluate M2L kernel
     evalM2P(cells);                                             // Evaluate M2P kernel
     evalP2P(cells);                                             // Evaluate P2P kernel

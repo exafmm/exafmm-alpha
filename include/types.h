@@ -48,7 +48,7 @@ typedef std::vector<bigint>                    Bigints;         //!< Vector of b
 typedef std::map<std::string,double>           Event;           //!< Map of event name to logged value
 typedef std::map<std::string,double>::iterator E_iter;          //!< Iterator for event name map
 
-enum KernelName {Laplace,BiotSavart,Stretching,Gaussian,CoulombVdW};//!< Kernel name enumeration
+enum KernelName {Laplace};                                      //!< Kernel name enumeration
 
 //! Structure for source bodies (stuff to send)
 struct JBody {

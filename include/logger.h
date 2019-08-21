@@ -6,9 +6,7 @@
 //! Timer and memory logger
 class Logger {
 private:
-  std::ofstream file;                                           //!< File ID to store log
   Event         tic;                                            //!< Timer (map from string to double)
-  Event         memory;                                         //!< Memory logger (map from string to double)
 
 //! Timer function
   double get_time() {
@@ -23,13 +21,10 @@ public:
 
 //! Constructor
   Logger() {
-    file.open("time.dat");                                      // Open timer log file
     printNow = false;                                           // Don't print by default
   }
 //! Destructor
-  ~Logger() {
-    file.close();                                               // Close timer log file
-  }
+  ~Logger() {}
 
 //! Start timer for given event
   void startTimer(std::string event) {
@@ -47,52 +42,6 @@ public:
 //! Erase entry in timer
   void eraseTimer(std::string event) {
     timer.erase(event);                                         // Erase event from timer
-  }
-
-//! Erase all events in timer
-  void resetTimer() {
-    timer.clear();                                              // Clear timer
-  }
-
-//! Record memory allocation
-  void allocMemory(std::string event, double bytes) {
-    memory[event] += bytes;                                     // Add allocation event to memory
-  }
-
-//! Record memory free
-  void freeMemory(std::string event, double bytes) {
-    memory[event] -= bytes;                                     // Delete allocation event from memory
-  }
-
-//! Print timings of a specific event
-  void printTime(std::string event) {
-    std::cout << event << " : " << timer[event] << std::endl;   // Print event and timer
-  }
-
-//! Print memory usage of a specific event
-  void printMemory(std::string event) {
-    std::cout << event << " : " << memory[event] << std::endl;  // Print event and memory
-  }
-
-//! Print timings of all events
-  void printAllTime() {
-    for( E_iter E=timer.begin(); E!=timer.end(); ++E ) {        // Loop over all events
-      std::cout << E->first << " : " << E->second << std::endl; //  Print event and timer
-    }                                                           // End loop over all events
-  }
-
-//! Write timings of all events
-  void writeTime() {
-    for( E_iter E=timer.begin(); E!=timer.end(); ++E ) {        // Loop over all events
-      file <<  E->first << " " << E->second << std::endl;       //  Print event and timer
-    }                                                           // End loop over all events
-  }
-
-//! Copy timer to another timer
-  void copyTime(Event &timer2) {
-    for( E_iter E2=timer2.begin(); E2!=timer2.end(); ++E2 ) {   // Loop over all events
-      timer[E2->first] = E2->second;                            //  Copy timer
-    }                                                           // End loop over all events
   }
 };
 

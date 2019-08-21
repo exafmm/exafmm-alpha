@@ -7,7 +7,6 @@ int main() {
   Bodies bodies(numBodies);
   Cells cells;
   SerialFMM FMM;
-  FMM.setKernel("Laplace");
   FMM.initialize();
   FMM.IMAGES = 0;
   FMM.THETA = 1 / sqrtf(4);
@@ -15,7 +14,6 @@ int main() {
 
   FMM.startTimer("Set bodies   ");
   Dataset Data;
-  Data.setKernel("Laplace");
   Data.random(bodies);
   FMM.stopTimer("Set bodies   ",printNow);
 
