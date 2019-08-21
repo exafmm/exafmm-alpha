@@ -34,59 +34,33 @@ public:
     }                                                           // End loop over bodies
   }
 
-//! Random distribution in [-1,1]^3 cube
-  void random(Bodies &bodies, int seed=1, int numSplit=1) {
-    srand(seed);                                                // Set seed for random number generator
-    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {      // Loop over bodies
-      if( numSplit != 1 && B-bodies.begin() == int(seed*bodies.size()/numSplit) ) {// Mimic parallel dataset
-        seed++;                                                 //   Mimic seed at next rank
-        srand(seed);                                            //   Set seed for random number generator
-      }                                                         //  Endif for mimicing parallel dataset
-      for( int d=0; d!=3; ++d ) {                               //  Loop over dimension
-        B->X[d] = rand() / (1. + RAND_MAX) * 2 * M_PI - M_PI;   //   Initialize positions
-      }                                                         //  End loop over dimension
-    }                                                           // End loop over bodies
-    initSource(bodies);                                         // Initialize source values
-    initTarget(bodies);                                         // Initialize target values
-  }
-
-//! Random distribution on r = 1 sphere
-  void sphere(Bodies &bodies, int seed=1, int numSplit=1) {
-    srand(seed);                                                // Set seed for random number generator
-    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {      // Loop over bodies
-      if( numSplit != 1 && B-bodies.begin() == int(seed*bodies.size()/numSplit) ) {// Mimic parallel dataset
-        seed++;                                                 //   Mimic seed at next rank
-        srand(seed);                                            //   Set seed for random number generator
-      }                                                         //  Endif for mimicing parallel dataset
-      for( int d=0; d!=3; ++d ) {                               //  Loop over dimension
-        B->X[d] = rand() / (1. + RAND_MAX) * 2 - 1;             //   Initialize positions
-      }                                                         //  End loop over dimension
-      real r = std::sqrt(norm(B->X));                           //  Distance from center
-      for( int d=0; d!=3; ++d ) {                               //  Loop over dimension
-        B->X[d] /= r * 1.1;                                     //   Normalize positions
-      }                                                         //  End loop over dimension
-    }                                                           // End loop over bodies
-    initSource(bodies);                                         // Initialize source values
-    initTarget(bodies);                                         // Initialize target values
-  }
-
-//! Uniform distribution on [-1,1]^3 lattice (for debugging)
-  void lattice(Bodies &bodies) {
-    int level = int(log(bodies.size()*MPISIZE+1.)/M_LN2/3);     // Level of tree
-    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {      // Loop over bodies
-      int d = 0, l = 0;                                         //  Initialize dimension and level
-      int index = MPIRANK * bodies.size() + (B-bodies.begin()); //  Set index of body iterator
-      vec<3,int> nx = 0;                                        //  Initialize 3-D cell index
-      while( index != 0 ) {                                     //  Deinterleave bits while index is nonzero
-        nx[d] += (index % 2) * (1 << l);                        //   Add deinterleaved bit to 3-D cell index
-        index >>= 1;                                            //   Right shift the bits
-        d = (d+1) % 3;                                          //   Increment dimension
-        if( d == 0 ) l++;                                       //   If dimension is 0 again, increment level
-      }                                                         //  End while loop for deinterleaving bits
-      for( d=0; d!=3; ++d ) {                                   //  Loop over dimensions
-        B->X[d] = -1 + (2 * nx[d] + 1.) / (1 << level);         //   Calculate cell center from 3-D cell index
-      }                                                         //  End loop over dimensions
-    }                                                           // End loop over bodies
+  void initBodies(Bodies &bodies) {
+    srand(0);
+    int b = 0;
+    while (b < int(bodies.size())) {
+#if 1
+      bodies[b].X[0] = drand48();
+      bodies[b].X[1] = drand48();
+      bodies[b].X[2] = drand48();
+      b++;
+#else
+      double X1 = drand48();
+      double X2 = drand48();
+      double X3 = drand48();
+      double R = 1.0 / sqrt( (pow(X1, -2.0 / 3.0) - 1.0) );
+      if (R < 100.0) {
+        double Z = (1.0 - 2.0 * X2) * R;
+        double X = sqrt(R * R - Z * Z) * cos(2.0 * M_PI * X3);
+        double Y = sqrt(R * R - Z * Z) * sin(2.0 * M_PI * X3);
+        double scale = 3.0 * M_PI / 16.0;
+        X *= scale; Y *= scale; Z *= scale;
+        bodies[b].X[0] = X;
+        bodies[b].X[1] = Y;
+        bodies[b].X[2] = Z;
+        b++;
+      }
+#endif
+    }
     initSource(bodies);                                         // Initialize source values
     initTarget(bodies);                                         // Initialize target values
   }

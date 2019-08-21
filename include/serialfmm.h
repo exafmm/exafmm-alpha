@@ -38,13 +38,13 @@ public:
     buffer.resize(bodies.size());                               // Resize sort buffer
     sortBodies(bodies,buffer,false);                            // Sort bodies in descending order
 
-/*
+    /*
     prune(bodies);                                              // Prune tree structure bottomup
 
     BottomUp::grow(bodies);                                     // Grow tree structure at bottom if necessary
 
     sortBodies(bodies,buffer,false);                            // Sort bodies in descending order
-*/
+    */
 
     Cells twigs;                                                // Twigs are cells at the bottom of tree
     bodies2twigs(bodies,twigs);                                 // Turn bodies to twigs

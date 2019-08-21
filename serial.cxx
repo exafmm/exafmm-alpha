@@ -2,19 +2,19 @@
 #include "serialfmm.h"
 
 int main() {
-  const int numBodies = 10000;
+  const int numBodies = 1000000;
   const int numTarget = 100;
   Bodies bodies(numBodies);
   Cells cells;
   SerialFMM FMM;
   FMM.initialize();
   FMM.IMAGES = 0;
-  FMM.THETA = 1 / sqrtf(4);
+  FMM.THETA = .5;
   bool printNow = true;
 
   FMM.startTimer("Set bodies   ");
   Dataset Data;
-  Data.random(bodies);
+  Data.initBodies(bodies);
   FMM.stopTimer("Set bodies   ",printNow);
 
   FMM.startTimer("Set domain   ");
@@ -22,7 +22,7 @@ int main() {
   FMM.stopTimer("Set domain   ",printNow);
 
   FMM.startTimer("Build tree   ");
-  FMM.topdown(bodies,cells);
+  FMM.bottomup(bodies,cells);
   FMM.stopTimer("Build tree   ",printNow);
 
   Cells jcells = cells;
