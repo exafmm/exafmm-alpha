@@ -308,6 +308,6 @@ public:
   void evalL2L(Cells &cells);                                   //!< Evaluate L2L kernel
   void evalL2P(Cells &cells);                                   //!< Evaluate L2P kernel
 };
-#include "../kernel/gpuEvaluator.cxx"
+#include "../gpuEvaluator.cxx"
 
 #endif
