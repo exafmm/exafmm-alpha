@@ -33,11 +33,11 @@ private:
       }                                                         // Endif for twigs with leafs
     } else if ( Ci->NCHILD != 0 ) {                             // If target is not twig
       for( int i=0; i<Ci->NCHILD; i++ ) {                       //  Loop over child cells of target
-        testMACM2P(CI0+Ci->CHILD[0]+i,Cj);                        //   Test multipole acceptance criteria for M2P kernel
+        testMACM2P(CI0+Ci->CHILD+i,Cj);                        //   Test multipole acceptance criteria for M2P kernel
       }                                                         //  End loop over child cells of target
     } else {                                                    // If target is twig
       for( int i=0; i<Cj->NCHILD; i++ ) {                       //  Loop over child cells of source
-        testMACM2P(Ci,CJ0+Cj->CHILD[0]+i);                        //   Test multipole acceptance criteria for M2P kernel
+        testMACM2P(Ci,CJ0+Cj->CHILD+i);                        //   Test multipole acceptance criteria for M2P kernel
       }                                                         //  End loop over child cells of source
     }                                                           // Endif for type of interaction
   }
@@ -55,11 +55,11 @@ private:
       }                                                         // Endif for twigs with leafs
     } else if ( Cj->NCHILD == 0 || (Ci->NCHILD != 0 && Ci->R > Cj->R) ) {// If source is twig or target is larger
       for( int i=0; i<Ci->NCHILD; i++ ) {                       //  Loop over child cells of target
-        testMACM2L(CI0+Ci->CHILD[0]+i,Cj);                        //   Test multipole acceptance criteria for M2L kernel
+        testMACM2L(CI0+Ci->CHILD+i,Cj);                        //   Test multipole acceptance criteria for M2L kernel
       }                                                         //  End loop over child cells of target
     } else {                                                    // If target is twig or source is larger
       for( int i=0; i<Cj->NCHILD; i++ ) {                       //  Loop over child cells of source
-        testMACM2L(Ci,CJ0+Cj->CHILD[0]+i);                        //   Test multipole acceptance criteria for M2L kernel
+        testMACM2L(Ci,CJ0+Cj->CHILD+i);                        //   Test multipole acceptance criteria for M2L kernel
       }                                                         //  End loop over child cells of source
     }                                                           // Endif for type of interaction
   }
@@ -77,26 +77,26 @@ private:
       }                                                         // Endif for twigs with leafs
     } else if ( Cj->NCHILD == 0 || (Ci->NCHILD != 0 && Ci->R > Cj->R) ) {// If source is twig or target is larger
       for( int i=0; i<Ci->NCHILD; i++ ) {                       //  Loop over child cells of target
-        int Ni = (CI0+Ci->CHILD[0]+i)->NLEAF;                     //   Number of target leafs
+        int Ni = (CI0+Ci->CHILD+i)->NLEAF;                     //   Number of target leafs
         int Nj = Cj->NLEAF;                                     //   Number of source leafs
         if( timeP2P*Nj < timeM2P && timeP2P*Ni*Nj < timeM2L ) { //   If P2P is fastest
-          testMACP2P(CI0+Ci->CHILD[0]+i,Cj);                      //    Test multipole acceptance criteria for P2P kernel
+          testMACP2P(CI0+Ci->CHILD+i,Cj);                      //    Test multipole acceptance criteria for P2P kernel
         } else if ( timeM2P < timeP2P*Nj && timeM2P*Ni < timeM2L ) {// If M2P is fastest
-          testMACM2P(CI0+Ci->CHILD[0]+i,Cj);                      //    Test multipole acceptance criteria for M2P kernel
+          testMACM2P(CI0+Ci->CHILD+i,Cj);                      //    Test multipole acceptance criteria for M2P kernel
         } else {                                                //   If M2L is fastest
-          testMACM2L(CI0+Ci->CHILD[0]+i,Cj);                      //    Test multipole acceptance criteria for M2L kernel
+          testMACM2L(CI0+Ci->CHILD+i,Cj);                      //    Test multipole acceptance criteria for M2L kernel
         }                                                       //   End if for fastest kernel
       }                                                         //  End loop over child cells of target
     } else {                                                    // If target is twig or source is larger
       for( int i=0; i<Cj->NCHILD; i++ ) {                       //  Loop over child cells of source
         int Ni = Ci->NLEAF;                                     //   Number of target leafs
-        int Nj = (CJ0+Cj->CHILD[0]+i)->NLEAF;                     //   Number of source leafs
+        int Nj = (CJ0+Cj->CHILD+i)->NLEAF;                     //   Number of source leafs
         if( timeP2P*Nj < timeM2P && timeP2P*Ni*Nj < timeM2L ) { //   If P2P is fastest
-          testMACP2P(Ci,CJ0+Cj->CHILD[0]+i);                      //    Test multipole acceptance criteria for P2P kernel
+          testMACP2P(Ci,CJ0+Cj->CHILD+i);                      //    Test multipole acceptance criteria for P2P kernel
         } else if ( timeM2P < timeP2P*Nj && timeM2P*Ni < timeM2L ) {// If M2P is fastest
-          testMACM2P(Ci,CJ0+Cj->CHILD[0]+i);                      //    Test multipole acceptance criteria for M2P kernel
+          testMACM2P(Ci,CJ0+Cj->CHILD+i);                      //    Test multipole acceptance criteria for M2P kernel
         } else {                                                //   If M2L is fastest
-          testMACM2L(Ci,CJ0+Cj->CHILD[0]+i);                      //    Test multipole acceptance criteria for M2L kernel
+          testMACM2L(Ci,CJ0+Cj->CHILD+i);                      //    Test multipole acceptance criteria for M2L kernel
         }                                                       //   End if for fastest kernel
       }                                                         //  End loop over child cells of source
     }                                                           // Endif for type of interaction
@@ -499,7 +499,7 @@ public:
         for( CI=CIB; CI!=CIE; ++CI ) {                            //   Loop over cells bottomup (except root cell)
           if( getLevel(CI->ICELL) == level ) {                    //    If target cell is at current level
             for( int i=0; i<CI->NCHILD; ++i ) {                   //     Loop over child cells
-              CJ = CI0 + CI->CHILD[0]+i;                            //      Set iterator for source cell
+              CJ = CI0 + CI->CHILD+i;                            //      Set iterator for source cell
               listM2M[CI-CI0].push_back(CJ);                      //      Push source cell into M2M interaction list
               sourceSize[CJ] = 2 * NCOEF;                         //      Key : iterator, Value : number of coefs
             }                                                     //     End loop over child cells

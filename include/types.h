@@ -83,7 +83,7 @@ struct Cell : JCell {
   int    NCHILD;                                                //!< Number of child cells
   int    NLEAF;                                                 //!< Number of leafs
   int    PARENT;                                                //!< Iterator offset of parent cell
-  int    CHILD[8];                                              //!< Iterator offset of child cells
+  int    CHILD;                                                 //!< Iterator offset of child cells
   B_iter LEAF;                                                  //!< Iterator of first leaf
   vect   X;                                                     //!< Cell center
   real   R;                                                     //!< Cell radius
