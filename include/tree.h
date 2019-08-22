@@ -28,9 +28,7 @@ private:
           cells[c_old].NCHILD = cells[c].NCHILD;                //    Copy number of children
           cells[c_old].NLEAF  = cells[c].NLEAF;                 //    Copy number of leafs
           cells[c_old].PARENT = cells[c].PARENT;                //    Copy parent link
-          for( int i=0; i!=cells[c].NCHILD; ++i ) {             //    Loop over children
-            cells[c_old].CHILD[i] = cells[c].CHILD[i];          //     Copy child link
-          }                                                     //    End loop over children
+          cells[c_old].CHILD[0] = cells[c].CHILD[0];          //     Copy child link
           cells[c_old].LEAF = cells[c].LEAF;                    //    Copy iterator of first leaf
           sticks.push_back(cells[c_old]);                       //    Push stick into vector
         }                                                       //   Endif for collision type
@@ -62,15 +60,15 @@ private:
         parent.LEAF = cells[i].LEAF;                            //   Set pointer to first leaf
         getCenter(parent);                                      //   Set cell center and radius
       }                                                         //  Endif for new parent cell
-      for( int c=0; c!=cells[i].NCHILD; ++c ) {                 //  Loop over child cells
-        (cells.begin()+cells[i].CHILD[c])->PARENT = i;          //   Link child to current
-      }                                                         //  End loop over child cells
+      for( int c=0; c!=cells[i].NCHILD; ++c ) {
+        (cells.begin()+cells[i].CHILD[0]+c)->PARENT = i;          //   Link child to current
+      }
       cells[i].PARENT = end;                                    //  Link to current to parent
       parent.NLEAF += cells[i].NLEAF;                           //  Add nleaf of child to parent
       parents.push_back(parent);                                //  Push parent cell into vector
       parent = parents.back();                                  //  Copy information from vector
       parents.pop_back();                                       //  Pop parent cell from vector
-      parent.CHILD[parent.NCHILD] = i;                          //  Link to child
+      if(parent.NCHILD==0) parent.CHILD[0] = i;                                      //  Link to child
       parent.NCHILD++;                                          //  Increment child counter
     }                                                           // End loop over cells at this level
     cells.push_back(parent);                                    // Push cells into vector
