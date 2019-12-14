@@ -524,12 +524,9 @@ __device__ inline void BiotSavartP2P_core(gpureal *target, gpureal *targetX, gpu
   d.y -= sourceShrd[7*i+1];
   d.z += targetX[2];
   d.z -= sourceShrd[7*i+2];
-#if 0
-  gpureal S2 = 2 * sourceShrd[7*i+6] * sourceShrd[7*i+6];
+#if 1
   gpureal R2 = d.x * d.x + d.y * d.y + d.z * d.z + EPS2;
-  gpureal RS = R2 / S2;
-  gpureal cutoff = 0.25 / M_PI / R2 / sqrtf(R2) * (erff( sqrtf(RS) )
-               - sqrtf(4 / M_PI * RS) * expf(-RS));
+  gpureal cutoff = 0.25 / M_PI / R2 / sqrtf(R2);
   target[0] += (d.y * sourceShrd[7*i+5] - d.z * sourceShrd[7*i+4]) * cutoff;
   target[1] += (d.z * sourceShrd[7*i+3] - d.x * sourceShrd[7*i+5]) * cutoff;
   target[2] += (d.x * sourceShrd[7*i+4] - d.y * sourceShrd[7*i+3]) * cutoff;
@@ -577,8 +574,7 @@ __global__ void BiotSavartP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
       sourceShrd[7*threadIdx.x+3] = sourceGlob[7*isource+3];
       sourceShrd[7*threadIdx.x+4] = sourceGlob[7*isource+4];
       sourceShrd[7*threadIdx.x+5] = sourceGlob[7*isource+5];
-//      sourceShrd[7*threadIdx.x+6] = sourceGlob[7*isource+6];
-      sourceShrd[7*threadIdx.x+6] = 0.5f / (sourceGlob[7*isource+6] * sourceGlob[7*isource+6]);
+      sourceShrd[7*threadIdx.x+6] = sourceGlob[7*isource+6];
       __syncthreads();
       int I = 0;
       for( int ix=-1; ix<=1; ++ix ) {
