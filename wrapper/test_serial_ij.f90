@@ -2,8 +2,8 @@ program main
   implicit none
   integer i,ni,nj,images
   integer,dimension (128) :: iseed
-  real(8) diff,norm
-  real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj
+  real(8) r0,diff,norm
+  real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj,x0
   real(8) kappa4pi, kappa, pi
   integer npl
 
@@ -20,7 +20,7 @@ program main
 
   ni = 10000
   nj = 20000
-  allocate( xi(3*ni),ui(3*ni),ud(3*ni),xj(3*nj),gj(3*nj) )
+  allocate( xi(3*ni),ui(3*ni),ud(3*ni),xj(3*nj),gj(3*nj),x0(3) )
   do i = 1,128
      iseed(i) = 0
   enddo
@@ -59,7 +59,11 @@ program main
 !  close(50)
 
   images = 3
-  call fmm_init(images)
+  do i = 1,3
+     x0(i) = 0
+  enddo
+  r0 = pi
+  call fmm_init(images,x0,r0)
   call fmm_biot_savart(ni,xi,ui,nj,xj,gj)
   call direct_biot_savart(ni,xi,ud,nj,xj,gj)
   diff = 0
