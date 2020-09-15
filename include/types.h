@@ -32,11 +32,12 @@ extern int MPIRANK;                                             //!< MPI comm ra
 extern int MPISIZE;                                             //!< MPI comm size
 #endif
 
-//!const int  P       = 10;                                        //!< Order of expansions
-const int  P       = 6;                                        //!< Order of expansions
-//!const int  NCRIT   = 1000;                                      //!< Number of bodies per cell
-const int  NCRIT   = 500;                                      //!< Number of bodies per cell
-//!const int  NCRIT   = 50;                                      //!< Number of bodies per cell
+const int  P       = 10;                                        //!< Order of expansions
+const int  NCRIT   = 30000;                                      //!< Number of bodies per cell
+//const int  NCRIT   = 6000;                                      //!< Number of bodies per cell
+//const int  NCRIT   = 1000;                                      //!< Number of bodies per cell
+//const int  NCRIT   = 500;                                      //!< Number of bodies per cell
+//const int  NCRIT   = 50;                                      //!< Number of bodies per cell
 const int  MAXBODY = 200000;                                    //!< Maximum number of bodies per GPU kernel
 const int  MAXCELL = 10000000;                                  //!< Maximum number of bodies/coefs in cell per GPU kernel
 const real CLET    = 2;                                         //!< LET opening critetia

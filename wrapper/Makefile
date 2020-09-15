@@ -36,8 +36,9 @@ lib_parallel_ij: parallel_wrapper_ij.o $(OBJECT)
 
 test_parallel_ij: test_parallel_ij.o
 	$(FC) $? -L. -lfmm $(LFLAGS)
-#	mpirun -np 2 ./a.out
-	mpirun -np 4 ./a.out
+#	mpirun -np 1 ./a.out
+	mpirun -np 2 ./a.out
+#	mpirun -np 4 ./a.out
 
 clean:
 	make -C .. clean

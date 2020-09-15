@@ -183,7 +183,7 @@ public:
         if     (B->X[d] < xmin[d]) xmin[d] = B->X[d];           //   Determine xmin
         else if(B->X[d] > xmax[d]) xmax[d] = B->X[d];           //   Determine xmax
       }                                                         //  End loop over each dimension
-      X0 += B->X;                                               //  Sum positions
+//      X0 += B->X;                                               //  Sum positions; comment out for preventing outside err by ave X0 accumurated vortex points more than 0.5
     }                                                           // End loop over bodies
     X0 /= bodies.size();                                        // Calculate average position
     for( int d=0; d!=3; ++d ) {                                 // Loop over each dimension
@@ -193,6 +193,7 @@ public:
     }                                                           // End loop over each dimension
     R0 += 1e-5;                                                 // Add some leeway to root radius
     if( IMAGES != 0 ) {                                         // If periodic boundary condition
+      R0 -= 1e-5;                                               //  Prevent superfluous error
       if( X0[0]-R0 < x0[0]-r0 || x0[0]+r0 < X0[0]+R0            //  Check for outliers in x direction
        || X0[1]-R0 < x0[1]-r0 || x0[1]+r0 < X0[1]+R0            //  Check for outliers in y direction
        || X0[2]-R0 < x0[2]-r0 || x0[2]+r0 < X0[2]+R0 ) {        //  Check for outliers in z direction

@@ -6,11 +6,18 @@ CUDA_INSTALL_PATH = /usr/local/cuda
 #DEVICE  = cpu
 DEVICE  = gpu
 
+# for T3, hpctech
 CXX     = mpicxx -g -O3 -std=c++11 -fPIC -fopenmp -ffast-math -funroll-loops -rdynamic -Wfatal-errors -I../include
+# old for hpctech for icc
 #CXX     = mpicxx -g -O3 -std=c++0x -fPIC -fopenmp -ffast-math -funroll-loops -rdynamic -Wfatal-errors -I../include
+# old for hpctech for g++
+#CXX     = icc -g -O3 -std=c++0x -fPIC -fopenmp -ffast-math -funroll-loops -rdynamic -Wfatal-errors -I../include
 NVCC    = nvcc -Xcompiler "-fopenmp -O3" -std=c++11 -use_fast_math -I../include
-FC      = mpiifort -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
-#FC      = mpifort -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
+# for T3
+#FC      = mpiifort -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
+# for hpctech
+FC      = mpifort -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
+#FC      = mpifort -CB -traceback -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
 LFLAGS  = -D$(DEVICE) -lstdc++ -ldl -lm
 ifeq ($(DEVICE),gpu)
 LFLAGS  += -lcudart

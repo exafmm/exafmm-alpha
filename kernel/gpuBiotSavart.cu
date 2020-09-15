@@ -518,18 +518,23 @@ __global__ void BiotSavartM2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
 }
 
 __device__ inline void BiotSavartP2P_core(gpureal *target, gpureal *targetX, gpureal *sourceShrd, float3 d, int i) {
-  d.x += targetX[0];
-  d.x -= sourceShrd[7*i+0];
-  d.y += targetX[1];
-  d.y -= sourceShrd[7*i+1];
-  d.z += targetX[2];
-  d.z -= sourceShrd[7*i+2];
+//  d.x += targetX[0];
+//  d.x -= sourceShrd[7*i+0];
+  d.x += targetX[0] - sourceShrd[7*i+0];
+//  d.y += targetX[1];
+//  d.y -= sourceShrd[7*i+1];
+  d.y += targetX[1] - sourceShrd[7*i+1];
+//  d.z += targetX[2];
+//  d.z -= sourceShrd[7*i+2];
+  d.z += targetX[2] - sourceShrd[7*i+2];
 #if 0
+// This if 0 section is not used.
   gpureal S2 = 2 * sourceShrd[7*i+6] * sourceShrd[7*i+6];
   gpureal R2 = d.x * d.x + d.y * d.y + d.z * d.z + EPS2;
   gpureal RS = R2 / S2;
-  gpureal cutoff = 0.25 / M_PI / R2 / sqrtf(R2) * (erff( sqrtf(RS) )
-               - sqrtf(4 / M_PI * RS) * expf(-RS));
+//  gpureal cutoff = 0.25 / M_PI / R2 / sqrtf(R2) * (erff( sqrtf(RS) )
+//               - sqrtf(4 / M_PI * RS) * expf(-RS));
+  gpureal cutoff = 0.25 / M_PI / R2 / sqrtf(R2);
   target[0] += (d.y * sourceShrd[7*i+5] - d.z * sourceShrd[7*i+4]) * cutoff;
   target[1] += (d.z * sourceShrd[7*i+3] - d.x * sourceShrd[7*i+5]) * cutoff;
   target[2] += (d.x * sourceShrd[7*i+4] - d.y * sourceShrd[7*i+3]) * cutoff;
@@ -545,8 +550,9 @@ __device__ inline void BiotSavartP2P_core(gpureal *target, gpureal *targetX, gpu
   (r)=(t)*expf(-(z)*(z)-1.26551223f+(t)*(1.00002368f+(t)*(0.37409196f+(t)*(0.09678418f+
       (t)*(-0.18628806f+(t)*(0.27886807f+(t)*(-1.13520398f+(t)*(1.48851587f+
       (t)*(-0.82215223f+(t)*0.17087277f)))))))));
-  gpureal cutoff = FOURPI * SQRT_R2_1 * SQRT_R2_1 * SQRT_R2_1 * ( 1.0f - r
-               - SQRT4PI * SQRT_RS * expf(-RS));
+//  gpureal cutoff = FOURPI * SQRT_R2_1 * SQRT_R2_1 * SQRT_R2_1 * ( 1.0f - r
+//               - SQRT4PI * SQRT_RS * expf(-RS));
+  gpureal cutoff = FOURPI * SQRT_R2_1 * SQRT_R2_1 * SQRT_R2_1;
   target[0] += (d.y * sourceShrd[7*i+5] - d.z * sourceShrd[7*i+4]) * cutoff;
   target[1] += (d.z * sourceShrd[7*i+3] - d.x * sourceShrd[7*i+5]) * cutoff;
   target[2] += (d.x * sourceShrd[7*i+4] - d.y * sourceShrd[7*i+3]) * cutoff;
