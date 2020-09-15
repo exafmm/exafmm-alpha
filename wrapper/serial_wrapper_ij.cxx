@@ -3,11 +3,13 @@
 
 SerialFMM * FMM;
 
-extern "C" void fmm_init_(int & images) {
+extern "C" void fmm_init_(int & images, double * x0, double & r0) {
   FMM = new SerialFMM;
   FMM->setKernel("BiotSavart");
   FMM->initialize();
   FMM->IMAGES = images;
+  for (int d=0; d<3; d++) FMM->X0[d] = x0[d];
+  FMM->R0 = r0;
   FMM->THETA = 1 / sqrtf(4);
 }
 

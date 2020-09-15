@@ -2,8 +2,8 @@ program main
   implicit none
   integer i,ni,nj,images
   integer,dimension (128) :: iseed
-  real(8) diff,norm
-  real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj
+  real(8) r0,diff,norm
+  real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj,x0
   real(8) kappa4pi, kappa, pi
   integer npl
 
@@ -13,12 +13,12 @@ program main
   kappa = 1.003078798D-7
   kappa4pi=7.982247452D-9
 
-  open(50,file='fort.50')
-  read(50,*) ni
+!  open(50,file='fort.50')
+!  read(50,*) ni
 
-  open(51,file='fort.51')
-  read(51,*) nj, npl
-  nj = nj*npl
+!  open(51,file='fort.51')
+!  read(51,*) nj, npl
+!  nj = nj*npl
 
 !  ni = 10000
 !  nj = 20000
@@ -47,7 +47,7 @@ program main
      read(51,*) xj(3*i-1), gj(3*i-1)
      read(51,*) xj(3*i-0), gj(3*i-0)
   enddo
-  close(51)
+!  close(51)
 
   do i = 1,ni
 !     xi(3*i-2) = (xi(3*i-2) - 0.5) * pi
@@ -59,11 +59,11 @@ program main
      ud(3*i-2) = 0
      ud(3*i-1) = 0
      ud(3*i-0) = 0
-     read(50,*) xi(3*i-2)
-     read(50,*) xi(3*i-1)
-     read(50,*) xi(3*i-0)
+!     read(50,*) xi(3*i-2)
+!     read(50,*) xi(3*i-1)
+!     read(50,*) xi(3*i-0)
   enddo
-  close(50)
+!  close(50)
 
   xi_min = 1.0D50
   xi_max =-1.0D50

@@ -583,8 +583,7 @@ __global__ void BiotSavartP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
       sourceShrd[7*threadIdx.x+3] = sourceGlob[7*isource+3];
       sourceShrd[7*threadIdx.x+4] = sourceGlob[7*isource+4];
       sourceShrd[7*threadIdx.x+5] = sourceGlob[7*isource+5];
-//      sourceShrd[7*threadIdx.x+6] = sourceGlob[7*isource+6];
-      sourceShrd[7*threadIdx.x+6] = 0.5f / (sourceGlob[7*isource+6] * sourceGlob[7*isource+6]);
+      sourceShrd[7*threadIdx.x+6] = sourceGlob[7*isource+6];
       __syncthreads();
       int I = 0;
       for( int ix=-1; ix<=1; ++ix ) {

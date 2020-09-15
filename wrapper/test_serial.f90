@@ -2,10 +2,10 @@ program main
   implicit none
   integer i,n,images
   integer,dimension (128) :: iseed
-  real(8) diff,norm
-  real(8),allocatable,dimension(:) :: x,g,u,ud
+  real(8) r0,diff,norm
+  real(8),allocatable,dimension(:) :: x,g,u,ud,x0
   n = 10000
-  allocate( x(3*n),g(3*n),u(3*n),ud(3*n) )
+  allocate( x(3*n),g(3*n),u(3*n),ud(3*n),x0(3) )
   do i = 1,128
      iseed(i) = 0
   enddo
@@ -13,6 +13,9 @@ program main
   call random_number(x)
   call random_number(g)
   do i = 1,n
+     x(3*i-2) = x(3*i-2) - 0.5
+     x(3*i-1) = x(3*i-1) - 0.5
+     x(3*i-0) = x(3*i-0) - 0.5
      g(3*i-2) = (g(3*i-2) - 0.5) / n
      g(3*i-1) = (g(3*i-1) - 0.5) / n
      g(3*i-0) = (g(3*i-0) - 0.5) / n
@@ -24,7 +27,11 @@ program main
      ud(3*i-0) = 0
   enddo
   images = 3
-  call fmm_init(images)
+  do i = 1,3
+     x0(i) = 0
+  enddo
+  r0 = 1.0
+  call fmm_init(images,x0,r0)
   call fmm_biot_savart(n,x,g,u)
   call direct_biot_savart(n,x,g,ud)
   diff = 0
