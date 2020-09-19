@@ -18,6 +18,8 @@ protected:
   B_iter      BJN;                                              //!< Source bodies end iterator
   C_iter      CI;                                               //!< Target cell iterator
   C_iter      CJ;                                               //!< Source cell iterator
+  vect        X0;                                               //!< Center of root cell
+  real        R0;                                               //!< Radius of root cell
   vect        Xperiodic;                                        //!< Coordinate offset of periodic image
   KernelName  kernelName;                                       //!< Name of kernel
 
@@ -42,8 +44,6 @@ protected:
   complex *Cnm;                                                 //!< M2L translation matrix \f$ C_{jn}^{km} \f$
 public:
   int IMAGES;                                                   //!< Number of periodic image sublevels
-  vect X0;                                                      //!< Center of root cell
-  real R0;                                                      //!< Radius of root cell
   real THETA;                                                   //!< Box opening criteria
   real NP2P;                                                    //!< Number of P2P kernel call
   real NM2P;                                                    //!< Number of M2P kernel call
@@ -173,17 +173,7 @@ public:
   real getR0() {return R0;}
 
 //! Set center and size of root cell
-  void setDomain(Bodies &bodies) {    
-    if( IMAGES != 0 ) {                                         // If periodic boundary condition
-      for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {    //  Loop over bodies
-        if( B->X[0] < X0[0]-R0 || X0[0]+R0 < B->X[0]            //   Check for outliers in x direction
-            || B->X[1] < X0[1]-R0 || X0[1]+R0 < B->X[1]         //   Check for outliers in y direction
-            || B->X[2] < X0[2]-R0 || X0[2]+R0 < B->X[2] ) {     //   Check for outliers in z direction
-          std::cout << "Error: Particles located outside periodic domain" << std::endl;// Print error message
-        }                                                       //   End if for outlier checking
-      }                                                         //  End loop over bodies
-      return;
-    }                                                           // Endif for periodic boundary condition
+  void setDomain(Bodies &bodies, vect x0=0, real r0=M_PI) {
     vect xmin,xmax;                                             // Min,Max of domain
     B_iter B = bodies.begin();                                  // Reset body iterator
     xmin = xmax = B->X;                                         // Initialize xmin,xmax

@@ -17,10 +17,6 @@ int main() {
   Dataset Data;
   Data.setKernel("Laplace");
   Data.random(bodies);
-  if (FMM.IMAGES != 0) {
-    FMM.X0 = 0;
-    FMM.R0 = M_PI;
-  }
   FMM.stopTimer("Set bodies   ",printNow);
 
   FMM.startTimer("Set domain   ");
