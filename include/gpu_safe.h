@@ -4,7 +4,7 @@
 
 #define CALL_GPU(KERNEL,EVENT)\
 void Kernel::KERNEL() {\
-  cudaThreadSynchronize();\
+  cudaDeviceSynchronize();\
   startTimer("cudaMalloc   ");\
   if( keysHost.size() > keysDevcSize ) {\
     if( keysDevcSize != 0 ) CUDA_SAFE_CALL(cudaFree(keysDevc));\
@@ -26,7 +26,7 @@ void Kernel::KERNEL() {\
     CUDA_SAFE_CALL(cudaMalloc( (void**) &targetDevc, targetHost.size()*sizeof(gpureal) ));\
     targetDevcSize = targetHost.size();\
   }\
-  cudaThreadSynchronize();\
+  cudaDeviceSynchronize();\
   stopTimer("cudaMalloc   ");\
   startTimer("cudaMemcpy   ");\
   CUDA_SAFE_CALL(cudaMemcpy(keysDevc,  &keysHost[0],  keysHost.size()*sizeof(int),      cudaMemcpyHostToDevice));\
@@ -34,21 +34,21 @@ void Kernel::KERNEL() {\
   CUDA_SAFE_CALL(cudaMemcpy(targetDevc,&targetHost[0],targetHost.size()*sizeof(gpureal),cudaMemcpyHostToDevice));\
   CUDA_SAFE_CALL(cudaMemcpy(sourceDevc,&sourceHost[0],sourceHost.size()*sizeof(gpureal),cudaMemcpyHostToDevice));\
   CUDA_SAFE_CALL(cudaMemcpyToSymbol(constDevc,&constHost[0],constHost.size()*sizeof(gpureal)));\
-  cudaThreadSynchronize();\
+  cudaDeviceSynchronize();\
   stopTimer("cudaMemcpy   ");\
-  cudaThreadSynchronize();\
+  cudaDeviceSynchronize();\
   startTimer(#EVENT);\
   int numBlocks = keysHost.size();\
   if( numBlocks != 0 ) {\
     KERNEL##_GPU<<< numBlocks, THREADS >>>(keysDevc,rangeDevc,targetDevc,sourceDevc);\
   }\
   CUT_CHECK_ERROR("Kernel execution failed");\
-  cudaThreadSynchronize();\
+  cudaDeviceSynchronize();\
   stopTimer(#EVENT);\
-  cudaThreadSynchronize();\
+  cudaDeviceSynchronize();\
   startTimer("cudaMemcpy   ");\
   CUDA_SAFE_CALL(cudaMemcpy(&targetHost[0],targetDevc,targetHost.size()*sizeof(gpureal),cudaMemcpyDeviceToHost));\
-  cudaThreadSynchronize();\
+  cudaDeviceSynchronize();\
   stopTimer("cudaMemcpy   ");\
 }
 
