@@ -15,6 +15,14 @@ static gpureal *targetDevc;                                     // Targets on de
 __device__ __constant__ gpureal constDevc[1];                   // Constants on device
 
 namespace {                                                     // Limit scope of the following functions to nvcc
+void cudaCheckError() {
+  cudaError_t err=cudaGetLastError();
+  if(err!=cudaSuccess) {
+    fprintf(stderr,"CUDA failure %s:%d: '%s'\n",__FILE__,__LINE__,cudaGetErrorString(err));
+    exit(-1);
+  }
+}
+
 __device__ void cart2sph(gpureal& r, gpureal& theta, gpureal& phi,// Get r,theta,phi from x,y,z on GPU
                          gpureal dx, gpureal dy, gpureal dz) {
   r = sqrtf(dx * dx + dy * dy + dz * dz)+EPS;                   // r = sqrt(x^2 + y^2 + z^2) + eps

@@ -41,6 +41,7 @@ void Kernel::KERNEL() {\
   if( numBlocks != 0 ) {\
     KERNEL##_GPU<<< numBlocks, THREADS >>>(keysDevc,rangeDevc,targetDevc,sourceDevc);\
   }\
+  cudaCheckError();\
   cudaDeviceSynchronize();\
   stopTimer(#EVENT);\
   cudaDeviceSynchronize();\
