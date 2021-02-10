@@ -9,7 +9,7 @@ int main() {
   ParallelFMM FMM;
   FMM.setKernel("Laplace");
   FMM.initialize();
-  FMM.IMAGES = 0;
+  FMM.IMAGES = 1;
   FMM.THETA = 1 / sqrtf(4);
   bool printNow = (MPIRANK == 0);
 

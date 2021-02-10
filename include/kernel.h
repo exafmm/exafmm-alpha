@@ -276,7 +276,7 @@ public:
   void LaplaceM2L();                                            //!< Evaluate Laplace M2L kernel
   void LaplaceM2P();                                            //!< Evaluate Laplace M2P kernel
   void LaplaceP2P();                                            //!< Evaluate Laplace P2P kernel
-  void LaplaceP2P_CPU();                                        //!< Evaluate Laplace P2P kernel on CPU
+  void LaplaceP2P_CPU(vect);                                    //!< Evaluate Laplace P2P kernel on CPU
   void LaplaceL2L();                                            //!< Evaluate Laplace L2L kernel
   void LaplaceL2P();                                            //!< Evaluate Laplace L2P kernel
   void LaplaceFinal();                                          //!< Finalize Lapalce kernels
@@ -288,7 +288,7 @@ public:
   void BiotSavartM2L();                                         //!< Evaluate Biot-Savart M2L kernel
   void BiotSavartM2P();                                         //!< Evaluate Biot-Savart M2P kernel
   void BiotSavartP2P();                                         //!< Evaluate Biot-Savart P2P kernel
-  void BiotSavartP2P_CPU();                                     //!< Evaluate Biot-Savart P2P kernel on CPU
+  void BiotSavartP2P_CPU(vect);                                 //!< Evaluate Biot-Savart P2P kernel on CPU
   void BiotSavartL2L();                                         //!< Evaluate Biot-Savart L2L kernel
   void BiotSavartL2P();                                         //!< Evaluate Biot-Savart L2P kernel
   void BiotSavartFinal();                                       //!< Finalize Biot-Savart kernels
@@ -300,7 +300,7 @@ public:
   void StretchingM2L();                                         //!< Evaluate Stretching M2L kernel
   void StretchingM2P();                                         //!< Evaluate Stretching M2P kernel
   void StretchingP2P();                                         //!< Evaluate Stretching P2P kernel
-  void StretchingP2P_CPU();                                     //!< Evaluate Stretching P2P kernel on CPU
+  void StretchingP2P_CPU(vect);                                 //!< Evaluate Stretching P2P kernel on CPU
   void StretchingL2L();                                         //!< Evaluate Stretching L2L kernel
   void StretchingL2P();                                         //!< Evaluate Stretching L2P kernel
   void StretchingFinal();                                       //!< Finalize Stretching kernels
@@ -312,7 +312,7 @@ public:
   void GaussianM2L();                                           //!< Dummy
   void GaussianM2P();                                           //!< Dummy
   void GaussianP2P();                                           //!< Evaluate Gaussian P2P kernel
-  void GaussianP2P_CPU();                                       //!< Evaluate Gaussian P2P kernel on CPU
+  void GaussianP2P_CPU(vect);                                   //!< Evaluate Gaussian P2P kernel on CPU
   void GaussianL2L();                                           //!< Dummy
   void GaussianL2P();                                           //!< Dummy
   void GaussianFinal();                                         //!< Finalize Gaussian kernels
@@ -324,7 +324,7 @@ public:
   void CoulombVdWM2L();                                         //!< Evaluate CoulombVdW M2L kernel
   void CoulombVdWM2P();                                         //!< Evaluate CoulombVdW M2P kernel
   void CoulombVdWP2P();                                         //!< Evaluate CoulombVdW P2P kernel
-  void CoulombVdWP2P_CPU();                                     //!< Evaluate CoulombVdW P2P kernel on CPU
+  void CoulombVdWP2P_CPU(vect);                                 //!< Evaluate CoulombVdW P2P kernel on CPU
   void CoulombVdWL2L();                                         //!< Evaluate CoulombVdW L2L kernel
   void CoulombVdWL2P();                                         //!< Evaluate CoulombVdW L2P kernel
   void CoulombVdWFinal();                                       //!< Finalize CoulombVdW kernels
@@ -348,17 +348,17 @@ public:
   }
 
 //! Select P2P_CPU kernel
-  void selectP2P_CPU() {
+  void selectP2P_CPU(vect Xp) {
     if( kernelName == Laplace ) {                               // If Laplace kernel
-      LaplaceP2P_CPU();                                         //  Evaluate P2P_CPU kernel
+      LaplaceP2P_CPU(Xp);                                       //  Evaluate P2P_CPU kernel
     } else if ( kernelName == BiotSavart ) {                    // If Biot Savart kernel
-      BiotSavartP2P_CPU();                                      //  Evaluate P2P_CPU kernel
+      BiotSavartP2P_CPU(Xp);                                    //  Evaluate P2P_CPU kernel
     } else if ( kernelName == Stretching ) {                    // If Stretching kernel
-      StretchingP2P_CPU();                                      //  Evaluate P2P_CPU kernel
+      StretchingP2P_CPU(Xp);                                    //  Evaluate P2P_CPU kernel
     } else if ( kernelName == Gaussian ) {                      // If Gaussian kernel
-      GaussianP2P_CPU();                                        //  Evaluate P2P_CPU kernel
+      GaussianP2P_CPU(Xp);                                      //  Evaluate P2P_CPU kernel
     } else if ( kernelName == CoulombVdW ) {                    // If CoulombVdW kernel
-      CoulombVdWP2P_CPU();                                      //  Evaluate P2P_CPU kernel
+      CoulombVdWP2P_CPU(Xp);                                    //  Evaluate P2P_CPU kernel
     } else {                                                    // If kernel is none of the above
       if(MPIRANK == 0) std::cout << "Invalid kernel type" << std::endl;// Invalid kernel type
       abort();                                                  //  Abort execution
