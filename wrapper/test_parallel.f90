@@ -3,7 +3,7 @@ program main
   include 'mpif.h'
   integer i,n,images,ierr,mpisize,mpirank
   integer,dimension (128) :: iseed
-  real(8) diff,norm
+  real(8) diff,norm,diff_sum,norm_sum
   real(8),parameter :: pi=3.14159265358979312d0
   real(8),allocatable,dimension(:) :: x,g,u,ud
   call mpi_init(ierr)
@@ -27,8 +27,11 @@ program main
      u(3*i-2) = 0
      u(3*i-1) = 0
      u(3*i-0) = 0
+     ud(3*i-2) = 0
+     ud(3*i-1) = 0
+     ud(3*i-0) = 0
   enddo
-  images = 3
+  images = 0
   call fmm_init(images)
   call fmm_partition(n,x,g,u)
   call fmm_biot_savart(n,x,g,u)
@@ -43,9 +46,9 @@ program main
      norm = norm + ud(3*i-1) ** 2
      norm = norm + ud(3*i-0) ** 2
   enddo
-!  call mpi_allreduce(diff,diff,1,mpi_double_precision,mpi_sum,0,mpi_comm_world,ierr)
-!  call mpi_allreduce(norm,norm,1,mpi_double_precision,mpi_sum,0,mpi_comm_world,ierr)
-  print '(a,es12.5)',"error         :",sqrt(diff/norm)
+  call mpi_allreduce(diff,diff_sum,1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+  call mpi_allreduce(norm,norm_sum,1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+  if (mpirank.eq.0) print '(a,es12.5)',"error         :",sqrt(diff_sum/norm_sum)
   call mpi_finalize(ierr)
   call fmm_finalize()
   deallocate( x,g,u,ud )

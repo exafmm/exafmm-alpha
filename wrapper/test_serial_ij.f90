@@ -4,29 +4,8 @@ program main
   integer,dimension (128) :: iseed
   real(8) diff,norm
   real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj
-  real(8) kappa4pi, kappa, pi
-  integer npl
-
-  real(8) xi_min,xi_max,xj_min,xj_max,gj_min,gj_max
-
-  pi = 4.0D0*atan(1.0D0)
-  kappa = 1.003078798D-7
-  kappa4pi=7.982247452D-9
-
-!t  open(50,file='fort.50')
-!t  read(50,*) ni
-
-!t  open(51,file='fort.51')
-!t  read(51,*) nj, npl
-!t  nj = nj*npl
-
   ni = 10000
   nj = 20000
-!  nj = 80000
-!  nj = 640*8
-!  nj = 8
-!  nj = 8*2
-!  nj = 8*3
   allocate( xi(3*ni),ui(3*ni),ud(3*ni),xj(3*nj),gj(3*nj) )
   do i = 1,128
      iseed(i) = 0
@@ -156,10 +135,6 @@ program main
   print '(a,3es15.6)',"ud(1:3) ",ud(1),ud(2),ud(3)
 !  print '(a,3es15.6)',"ui(1:3) ",ui(1)*4*pi,ui(2)*4*pi,ui(3)*4*pi
 !  print '(a,3es15.6)',"ud(1:3) ",ud(1)*4*pi,ud(2)*4*pi,ud(3)*4*pi
-!t  print '(a,3es15.6)',"ui(1:3) ",ui(1)*kappa,ui(2)*kappa,ui(3)*kappa
-!t  print '(a,3es15.6)',"ud(1:3) ",ud(1)*kappa,ud(2)*kappa,ud(3)*kappa
-!t  print '(a,3es15.6)',"ui(4:6) ",ui(4)*kappa,ui(5)*kappa,ui(6)*kappa
-!t  print '(a,3es15.6)',"ud(4:6) ",ud(4)*kappa,ud(5)*kappa,ud(6)*kappa
   call fmm_finalize()
   deallocate( xi,ui,ud,xj,gj )
 end program main
