@@ -2,6 +2,7 @@ include ../Makefile.include
 
 serial: serial.o $(OBJECT)
 	$(CXX) $? $(LFLAGS)
+	./a.out
 
 lib_serial: serial_wrapper.o $(OBJECT)
 	ar -cr libfmm.a serial_wrapper.o $(OBJECT)
@@ -23,6 +24,7 @@ test_serial_ij: test_serial_ij.o
 
 parallel: parallel.o $(OBJECT)
 	$(CXX) $? $(LFLAGS)
+	mpirun -np 2 ./a.out
 
 lib_parallel: parallel_wrapper.o $(OBJECT)
 	ar -cr libfmm.a parallel_wrapper.o $(OBJECT)
@@ -40,9 +42,7 @@ lib_parallel_ij: parallel_wrapper_ij.o $(OBJECT)
 test_parallel_ij: test_parallel_ij.o
 	make lib_parallel_ij
 	$(FC) $? -L. -lfmm $(LFLAGS)
-#	mpirun -np 1 ./a.out
 	mpirun -np 2 ./a.out
-#	mpirun -np 4 ./a.out
 
 clean:
 	make -C .. clean

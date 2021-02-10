@@ -17,8 +17,7 @@ extern "C" void fmm_finalize_() {
 }
 
 extern "C" void fmm_biot_savart_(int & ni, double * xi, double * ui, int & nj, double * xj, double * gj) {
-//  bool printNow = true;
-  bool printNow = false;
+  bool printNow = true;
   FMM->startTimer("Set bodies   ");
   Bodies bodies(ni);
   B_iter B=bodies.begin();
@@ -66,8 +65,7 @@ extern "C" void fmm_biot_savart_(int & ni, double * xi, double * ui, int & nj, d
 }
 
 extern "C" void direct_biot_savart_(int & ni, double * xi, double * ui, int & nj, double * xj, double * gj) {
-//  bool printNow = true;
-  bool printNow = false;
+  bool printNow = true;
   FMM->startTimer("Set bodies   ");
   Bodies bodies(ni);
   B_iter B=bodies.begin();
