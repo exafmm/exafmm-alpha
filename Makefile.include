@@ -3,8 +3,8 @@
 
 CUDA_INSTALL_PATH = /usr/local/cuda
 
-DEVICE  = cpu
-#DEVICE  = gpu
+#DEVICE  = cpu
+DEVICE  = gpu
 
 CXX     = mpicxx -g -O3 -std=c++11 -fPIC -fopenmp -ffast-math -funroll-loops -rdynamic -Wfatal-errors -I../include
 NVCC    = nvcc -Xcompiler "-fopenmp -O3" -std=c++11 -use_fast_math -I../include
