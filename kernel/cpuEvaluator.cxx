@@ -3,7 +3,8 @@ void Evaluator::testMACP2P(C_iter Ci, C_iter Cj) {              // Test multipol
   BIN = Ci->LEAF + Ci->NLEAF;                                   // Set target bodies end iterator
   BJ0 = Cj->LEAF;                                               // Set source bodies begin iterator
   BJN = Cj->LEAF + Cj->NLEAF;                                   // Set source bodies end iterator
-  selectP2P_CPU();                                              // Select P2P_CPU kernel
+  vect Xp = Xperiodic;                                          // Define coordinate offset vector
+  selectP2P_CPU(Xp);                                            // Select P2P_CPU kernel
   NP2P++;                                                       // Count P2P kernel execution
 }
 
@@ -54,8 +55,9 @@ void Evaluator::timeKernels() {                                 // Time all kern
   BIN = Ci->LEAF + Ci->NLEAF;                                   // Set target bodies end iterator
   BJ0 = Cj->LEAF;                                               // Set source bodies begin iterator
   BJN = Cj->LEAF + Cj->NLEAF;                                   // Set source bodies end iterator
+  vect Xp = 0;                                                  // Define coordinate offset vector
   startTimer("P2P kernel   ");                                  // Start timer
-  for( int i=0; i!=1; ++i ) selectP2P_CPU();                    // Select P2P_CPU kernel
+  for( int i=0; i!=1; ++i ) selectP2P_CPU(Xp);                  // Select P2P_CPU kernel
   timeP2P = stopTimer("P2P kernel   ") / 10000;                 // Stop timer
   CI = Ci;                                                      // Set global target cell iterator
   CJ = Cj;                                                      // Set global source cell iterator
@@ -98,8 +100,19 @@ void Evaluator::evalP2P(Bodies &ibodies, Bodies &jbodies, bool onCPU) {// Evalua
   BIN = ibodies.end();                                          // Set target bodies end iterator
   BJ0 = jbodies.begin();                                        // Set source bodies begin iterator
   BJN = jbodies.end();                                          // Set source bodies end iterator
-  Xperiodic = 0 * onCPU;                                        // Set periodic coordinate offset (onCPU is dummy)
-  selectP2P_CPU();                                              // Select P2P_CPU kernel
+  int range = (pow(3,IMAGES) - 1) / 2;                          // Compute periodic range
+#pragma omp parallel for collapse(3)
+  for( int ix=-range; ix<=range; ++ix ) {                       // Loop over x periodic direction
+    for( int iy=-range; iy<=range; ++iy ) {                     //  Loop over y periodic direction
+      for( int iz=-range; iz<=range; ++iz ) {                   //   Loop over z periodic direction
+	vect Xp;                                                //    Define coordinate offset vector
+        Xp[0] = ix * 2 * R0;                                    //    Coordinate offset for x periodic direction
+        Xp[1] = iy * 2 * R0;                                    //    Coordinate offset for y periodic direction
+        Xp[2] = iz * 2 * R0;                                    //    Coordinate offset for z periodic direction
+        selectP2P_CPU(Xp);                                      //    Select P2P_CPU kernel
+      }                                                         //   End loop over x periodic direction
+    }                                                           //  End loop over y periodic direction
+  }                                                             // End loop over z periodic direction
 }
 
 void Evaluator::evalP2M(Cells &cells) {                         // Evaluate P2M
@@ -200,10 +213,11 @@ void Evaluator::evalP2P(Cells &cells, bool kernel) {            // Evaluate P2P
           for( int iy=-1; iy<=1; ++iy ) {                       //    Loop over y periodic direction
             for( int iz=-1; iz<=1; ++iz, ++I ) {                //     Loop over z periodic direction
               if( Iperiodic & (1 << I) ) {                      //      If periodic flag is on
-                Xperiodic[0] = ix * 2 * R0;                     //       Coordinate offset for x periodic direction
-                Xperiodic[1] = iy * 2 * R0;                     //       Coordinate offset for y periodic direction
-                Xperiodic[2] = iz * 2 * R0;                     //       Coordinate offset for z periodic direction
-                selectP2P_CPU();                                //       Select P2P_CPU kernel
+		vect Xp;                                        //       Define coordinate offset vector
+                Xp[0] = ix * 2 * R0;                            //       Coordinate offset for x periodic direction
+                Xp[1] = iy * 2 * R0;                            //       Coordinate offset for y periodic direction
+                Xp[2] = iz * 2 * R0;                            //       Coordinate offset for z periodic direction
+                selectP2P_CPU(Xp);                              //       Select P2P_CPU kernel
               }                                                 //      Endif for periodic flag
             }                                                   //     End loop over x periodic direction
           }                                                     //    End loop over y periodic direction

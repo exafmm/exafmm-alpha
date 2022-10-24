@@ -1,10 +1,10 @@
 program main
   implicit none
   include 'mpif.h'
-  integer i,ni,nj,ierr,mpisize,mpirank
+  integer i,ni,nj,images,ierr,mpisize,mpirank
   integer,dimension (128) :: iseed
-  real(8),parameter :: pi=3.14159265358979312d0
   real(8) diff,norm
+  real(8),parameter :: pi=3.14159265358979312d0
   real(8),allocatable,dimension(:) :: xi,ui,ud,xj,gj
   call mpi_init(ierr)
   call mpi_comm_size(mpi_comm_world,mpisize,ierr)
@@ -38,7 +38,8 @@ program main
      ud(3*i-1) = 0
      ud(3*i-0) = 0
   enddo
-  call fmm_init()
+  images = 0
+  call fmm_init(images)
   call fmm_partition(ni,xi,nj,xj,gj)
   call fmm_biot_savart(ni,xi,ui,nj,xj,gj)
   call direct_biot_savart(ni,xi,ud,nj,xj,gj)
@@ -52,9 +53,9 @@ program main
      norm = norm + ud(3*i-1) ** 2
      norm = norm + ud(3*i-0) ** 2
   enddo
-!  call mpi_allreduce(diff,diff,1,mpi_double_precision,mpi_sum,0,mpi_comm_world,ierr)
-!  call mpi_allreduce(norm,norm,1,mpi_double_precision,mpi_sum,0,mpi_comm_world,ierr)
-  print '(a,es12.5)',"error         :",sqrt(diff/norm)
+  call mpi_allreduce(diff,diff,1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+  call mpi_allreduce(norm,norm,1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+  if (mpirank.eq.0) print '(a,es12.5)',"error         :",sqrt(diff/norm)
   call mpi_finalize(ierr)
   call fmm_finalize()
   deallocate( xi,ui,ud,xj,gj )

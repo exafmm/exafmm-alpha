@@ -21,7 +21,7 @@ public:
 
     TopDown::setIndex();                                        // Set index of cells
 
-    buffer.resize(bodies.size());                               // Resize sort buffer
+    buffer.resize(bodies.size());                             // Resize sort buffer
     sortBodies(bodies,buffer,false);                            // Sort bodies in descending order
 
     Cells twigs;                                                // Twigs are cells at the bottom of tree
@@ -35,7 +35,7 @@ public:
   void bottomup(Bodies &bodies, Cells &cells) {
     BottomUp::setIndex(bodies);                                 // Set index of cells
 
-    buffer.resize(bodies.size());                               // Resize sort buffer
+    buffer.resize(bodies.size());                             // Resize sort buffer
     sortBodies(bodies,buffer,false);                            // Sort bodies in descending order
 
 /*

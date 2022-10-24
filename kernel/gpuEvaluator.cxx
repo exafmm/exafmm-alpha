@@ -285,9 +285,11 @@ void Evaluator::evalP2P(Bodies &ibodies, Bodies &jbodies, bool onCPU) {// Evalua
       BJN = jbodies.begin()+std::min(joffset+MAXBODY,int(jbodies.size()));// Set source bodies end iterator
       if( onCPU ) {                                             //  If calculation is to be done on CPU
         Xperiodic = 0;                                          //   Set periodic coordinate offset
-        selectP2P_CPU();                                        //   Select P2P_CPU kernel
+	vect Xp = Xperiodic;                                    //   Define coordinate offset vector
+        selectP2P_CPU(Xp);                                      //   Select P2P_CPU kernel
       } else {                                                  //  If calculation is to be done on GPU
         constHost.push_back(2*R0);                              //   Copy domain size to GPU buffer
+        //constHost.push_back(IMAGES);                            //   Copy number of images to GPU buffer
         for( B_iter B=BJ0; B!=BJN; ++B ) {                      //   Loop over source bodies
           sourceHost.push_back(B->X[0]);                        //   Copy x position to GPU buffer
           sourceHost.push_back(B->X[1]);                        //   Copy y position to GPU buffer

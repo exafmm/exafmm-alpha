@@ -18,8 +18,10 @@
 #include "vec.h"
 
 typedef long                 bigint;                            //!< Big integer type
-typedef float                real;                              //!< Real number type on CPU
-typedef float                gpureal;                           //!< Real number type on GPU
+//!typedef float                real;                              //!< Real number type on CPU
+typedef double                real;                              //!< Real number type on CPU
+//!typedef float                gpureal;                           //!< Real number type on GPU
+typedef double               gpureal;                           //!< Real number type on GPU
 typedef std::complex<double> complex;                           //!< Complex number type
 
 #ifndef KERNEL
@@ -36,6 +38,7 @@ const int  MAXBODY = 200000;                                    //!< Maximum num
 const int  MAXCELL = 10000000;                                  //!< Maximum number of bodies/coefs in cell per GPU kernel
 const real CLET    = 2;                                         //!< LET opening critetia
 const real EPS2    = 1e-6;                                      //!< Softening parameter
+//const real EPS2    = 1e-30;                                      //!< Softening parameter
 const int  GPUS    = 4;                                         //!< Number of GPUs per node
 const int  THREADS = 64;                                        //!< Number of threads per thread-block
 
