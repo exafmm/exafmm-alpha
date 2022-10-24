@@ -4,7 +4,7 @@
 
 void Kernel::StretchingInit() {
   startTimer("Init GPU     ");                                  // Start timer
-  cudaDeviceReset();                                             // Exit GPU thread
+  cudaDeviceReset();                                            // Exit GPU thread
   cudaSetDevice(MPIRANK % GPUS);                                // Set GPU device
   cudaDeviceSynchronize();                                      // Sync GPU threads
   stopTimer("Init GPU     ",MPIRANK==0);                        // Stop timer & print
