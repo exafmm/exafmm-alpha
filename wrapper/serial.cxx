@@ -7,7 +7,7 @@ int main() {
   Bodies bodies(numBodies);
   Cells cells;
   SerialFMM FMM;
-  FMM.setKernel("Laplace");
+  FMM.setKernel("BiotSavart");
   FMM.initialize();
   FMM.IMAGES = 1;
   FMM.THETA = 1 / sqrtf(4);

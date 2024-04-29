@@ -12,7 +12,7 @@ program main
   n = 10000
   allocate( x(3*n),g(3*n),u(3*n),ud(3*n) )
   do i = 1,128
-     iseed(i) = mpirank
+     iseed(i) = mpirank+1
   enddo
   call random_seed(put=iseed)
   call random_number(x)

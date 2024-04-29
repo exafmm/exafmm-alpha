@@ -6,13 +6,13 @@ CUDA_INSTALL_PATH = /usr/local/cuda
 #DEVICE  = cpu
 DEVICE  = gpu
 
-CXX     = mpicxx -g -O3 -std=c++11 -fPIC -fopenmp -ffast-math -funroll-loops -rdynamic -Wfatal-errors -I../include
+CXX     = mpicxx -g -O3 -std=c++11 -fPIC -fopenmp -Wfatal-errors -I../include
 NVCC    = nvcc -Xcompiler "-fopenmp -O3" -std=c++11 -use_fast_math -I../include
-FC      = mpifort -g -O3 -fPIC -fopenmp -funroll-loops -rdynamic -I../include
+FC      = mpif90 -g -O3 -fPIC -fopenmp -I../include
 LFLAGS  = -D$(DEVICE) -lstdc++ -ldl -lm
 #LFLAGS	+= -lmpi_cxx
 ifeq ($(DEVICE),gpu)
-LFLAGS  += -lcudart
+LFLAGS  += -L/apps/t4/rhel9/cuda_tmp/12.3.2/targets/x86_64-linux/lib -lcudart
 endif
 OBJECT  = ../kernel/$(DEVICE)Laplace.o ../kernel/$(DEVICE)BiotSavart.o\
 	../kernel/$(DEVICE)Stretching.o ../kernel/$(DEVICE)Gaussian.o\

@@ -5,6 +5,7 @@ serial: serial.o $(OBJECT)
 	./a.out
 
 lib_serial: serial_wrapper.o $(OBJECT)
+	rm libfmm.a
 	ar -cr libfmm.a serial_wrapper.o $(OBJECT)
 	ranlib libfmm.a
 
@@ -14,6 +15,7 @@ test_serial: test_serial.o
 	./a.out
 
 lib_serial_ij: serial_wrapper_ij.o $(OBJECT)
+	rm libfmm.a
 	ar -cr libfmm.a serial_wrapper_ij.o $(OBJECT)
 	ranlib libfmm.a
 
@@ -27,6 +29,7 @@ parallel: parallel.o $(OBJECT)
 	mpirun -np 2 ./a.out
 
 lib_parallel: parallel_wrapper.o $(OBJECT)
+	rm libfmm.a
 	ar -cr libfmm.a parallel_wrapper.o $(OBJECT)
 	ranlib libfmm.a
 
@@ -36,6 +39,7 @@ test_parallel: test_parallel.o
 	mpirun -np 2 ./a.out
 
 lib_parallel_ij: parallel_wrapper_ij.o $(OBJECT)
+	rm libfmm.a
 	ar -cr libfmm.a parallel_wrapper_ij.o $(OBJECT)
 	ranlib libfmm.a
 

@@ -9,7 +9,7 @@ program main
   nj = 20000
   allocate( xi(3*ni),ui(3*ni),ud(3*ni),xj(3*nj),gj(3*nj) )
   do i = 1,128
-     iseed(i) = 0
+     iseed(i) = 1
   enddo
   call random_seed(put=iseed)
   call random_number(xi)
