@@ -5,9 +5,9 @@ void Kernel::BiotSavartP2P_CPU(vect Xp) {                       // Biot-Savart P
   for( B_iter BI=BI0; BI!=BIN; ++BI ) {                         // Loop over target bodies
     for( B_iter BJ=BJ0; BJ!=BJN; ++BJ ) {                       //  Loop over source bodies
       vect dist = BI->X - BJ->X - Xp;                           //   Distance vector from source to target
-      real S2 = 2 * BJ->SRC[3] * BJ->SRC[3];                    //    2 * sigma^2
+//      real S2 = 2 * BJ->SRC[3] * BJ->SRC[3];                    //    2 * sigma^2
       real R2  = norm(dist) + EPS2;                             //    R^2 + epsilon^2
-      real RS = R2 / S2;                                        //    R^2 / (2 * simga^2)
+//      real RS = R2 / S2;                                        //    R^2 / (2 * simga^2)
 //      real cutoff = 0.25 / M_PI / R2 / std::sqrt(R2) * (erf( std::sqrt(RS) )// cutoff function
 //                  - std::sqrt(4 / M_PI * RS) * exp(-RS));
       real cutoff = 0.25 / M_PI / R2 / std::sqrt(R2);
