@@ -9,13 +9,13 @@ int main() {
   SerialFMM FMM;
   FMM.setKernel("BiotSavart");
   FMM.initialize();
-  FMM.IMAGES = 0;
+  FMM.IMAGES = 1;
   FMM.THETA = 1 / sqrtf(4);
   bool printNow = true;
 
   FMM.startTimer("Set bodies   ");
   Dataset Data;
-  Data.setKernel("Laplace");
+  Data.setKernel("BiotSavart");
   Data.random(bodies);
   FMM.stopTimer("Set bodies   ",printNow);
 

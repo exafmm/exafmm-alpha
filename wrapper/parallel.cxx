@@ -15,7 +15,7 @@ int main() {
 
   FMM.startTimer("Set bodies   ");
   Dataset Data;
-  Data.setKernel("Laplace");
+  Data.setKernel("BiotSavart");
   Data.random(bodies,MPIRANK+1);
   FMM.stopTimer("Set bodies   ",printNow);
 
