@@ -518,9 +518,12 @@ __global__ void BiotSavartM2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
 }
 
 __device__ inline void BiotSavartP2P_core(gpureal *target, gpureal *targetX, gpureal *sourceShrd, float3 d, int i) {
-  d.x += targetX[0] - sourceShrd[7*i+0];
-  d.y += targetX[1] - sourceShrd[7*i+1];
-  d.z += targetX[2] - sourceShrd[7*i+2];
+  d.x += targetX[0];
+  d.x -= sourceShrd[7*i+0];
+  d.y += targetX[1];
+  d.y -= sourceShrd[7*i+1];
+  d.z += targetX[2];
+  d.z -= sourceShrd[7*i+2];
 #if 1
 //  gpureal S2 = 2 * sourceShrd[7*i+6] * sourceShrd[7*i+6];
   gpureal R2 = d.x * d.x + d.y * d.y + d.z * d.z + EPS2;
