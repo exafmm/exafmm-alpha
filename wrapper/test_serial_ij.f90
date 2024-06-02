@@ -34,7 +34,7 @@ program main
      ud(3*i-1) = 0
      ud(3*i-0) = 0
   enddo
-  images = 0
+  images = 1
   call fmm_init(images)
   call fmm_biot_savart(ni,xi,ui,nj,xj,gj)
   call direct_biot_savart(ni,xi,ud,nj,xj,gj)
