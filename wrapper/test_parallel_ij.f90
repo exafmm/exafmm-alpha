@@ -11,7 +11,7 @@ program main
   call mpi_comm_rank(mpi_comm_world,mpirank,ierr)
   ni = 10000
   nj = 20000
-  allocate( xi(3*ni),ui(3*ni),ud(3*ni),xj(3*nj),gj(3*nj) )
+  allocate( xi(6*ni),ui(6*ni),ud(6*ni),xj(6*nj),gj(6*nj) )
   do i = 1,128
      iseed(i) = mpirank+1
   enddo

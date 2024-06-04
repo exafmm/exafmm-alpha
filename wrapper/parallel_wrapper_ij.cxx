@@ -51,6 +51,8 @@ extern "C" void fmm_partition_(int & ni, double * xi, int & nj, double * xj, dou
   FMM->octsection(jbodies);
   FMM->stopTimer("Partition    ",printNow);
 
+  assert(bodies.size() < 2*ni);
+  assert(jbodies.size() < 2*nj);
   ni = bodies.size();
   nj = jbodies.size();
   assert(ni*nj != 0);

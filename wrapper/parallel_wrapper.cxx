@@ -39,6 +39,7 @@ extern "C" void fmm_partition_(int & numBodies, double * x, double * g, double *
   FMM->octsection(bodies);
   FMM->stopTimer("Partition    ",printNow);
 
+  assert(bodies.size() < 2*numBodies);
   numBodies = bodies.size();
   B=bodies.begin();
   for(int b=0; b<numBodies; b++,B++) {
