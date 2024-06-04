@@ -577,8 +577,6 @@ public:
   void commCells(Bodies &bodies, Cells &cells) {
     vect xmin = 0, xmax = 0;                                    // Initialize domain boundaries
     Cells twigs,sticks;                                         // Twigs and sticks are special types of cells
-
-#if 1
     startTimer("Get LET      ");                                // Start timer
     int ssize = 0;                                              // Initialize offset for send cells
     sendCellCnt.assign(MPISIZE,0);                              // Initialize cell send count
@@ -626,64 +624,6 @@ public:
     twigs2cells(twigs,cells,sticks);                            // Turn twigs to cells
     sendCells.clear();                                          // Clear send buffer
     recvCells.clear();                                          // Clear recv buffer
-#else
-    int offTwigs = 0;                                           // Initialize offset of twigs
-    for( int l=0; l!=LEVEL; ++l ) {                             // Loop over levels of N-D hypercube communication
-      getOtherDomain(xmin,xmax,l+1);                            //  Get boundries of domains on other processes
-      startTimer("Get LET      ");                              //  Start timer
-      getLET(cells.begin(),cells.end()-1,xmin,xmax);            //  Determine which cells to send
-#ifdef DEBUG
-      checkNumCells(LEVEL-l-1);
-      checkSumMass(cells);
-#endif
-      stopTimer("Get LET      ",printNow);                      //  Stop timer 
-      startTimer("Alltoall C   ");                              //  Start timer
-      commCellsAlltoall(l);                                     //  Communicate cells by one-to-one MPI_Alltoallv
-      if( nprocs[l][0] % 2 == 1 && nprocs[l][0] != 1 && nprocs[l+1][0] <= nprocs[l+1][1] ) {// If scatter is necessary
-        commCellsScatter(l);                                    //   Communicate cells by scattering from leftover proc
-      }                                                         //  Endif for odd number of procs
-      stopTimer("Alltoall C   ",printNow);                      //  Stop timer 
-      if( l == LEVEL - 1 ) rbodies2twigs(bodies,twigs);         //  Put recv bodies into twig vector
-      startTimer("Cells2twigs  ");                              //  Start timer
-      cells2twigs(cells,twigs,l==LEVEL-1);                      //  Put cells into twig vector
-      stopTimer("Cells2twigs  ",printNow);                      //  Stop timer 
-      startTimer("Send2twigs   ");                              //  Start timer
-      send2twigs(bodies,twigs,offTwigs);                        //  Put send buffer (sticks) into twig vector
-      stopTimer("Send2twigs   ",printNow);                      //  Stop timer 
-      startTimer("Recv2twigs   ");                              //  Start timer
-      recv2twigs(bodies,twigs);                                 //  Put recv buffer into twig vector
-      stopTimer("Recv2twigs   ",printNow);                      //  Stop timer 
-#ifdef DEBUG
-      if( l == LEVEL - 1 ) {                                    //  If at last level
-        complex SUM = 0;                                        //   Initialize accumulator
-        for(C_iter C=twigs.begin(); C!=twigs.end(); ++C) {      //   Loop over twigs
-          if( C->NLEAF == 0 ) SUM += C->M[0];                   //    Add multipoles of empty twigs
-        }                                                       //   End loop over twigs
-        print("Before recv   : ",0);                            //   Print identifier
-        print(SUM);                                             //   Print sum of multipoles
-      }                                                         //  Endif for last level
-#endif
-      zipTwigs(twigs,cells,sticks,l==LEVEL-1);                  //  Zip two groups of twigs that overlap
-#ifdef DEBUG
-      if( l == LEVEL - 1 ) {                                    //  If at last level
-        complex SUM = 0;                                        //   Initialize accumulator
-        for(C_iter C=twigs.begin(); C!=twigs.end(); ++C) {      //   Loop over twigs
-          SUM += C->M[0];                                       //    Add multipoles
-        }                                                       //   End loop over twigs
-        print("After merge   : ",0);                            //   Print identifier
-        print(SUM);                                             //   Print sum of multipoles
-        print("sticks.size() : ",0);                            //   Print identifier
-        print(sticks.size());                                   //   Print size of stick vector
-      }                                                         //  Endif for last level
-#endif
-      if( l == LEVEL - 1 ) reindexBodies(bodies,twigs,cells,sticks);// Re-index bodies
-      twigs2cells(twigs,cells,sticks);                          //  Turn twigs to cells
-      startTimer("Sticks2send  ");                              //  Start timer
-      sticks2send(sticks,offTwigs);                             //  Turn sticks to send buffer
-      stopTimer("Sticks2send  ",printNow);                      //  Stop timer 
-    }                                                           // End loop over levels of N-D hypercube communication
-#endif
-
 #ifdef DEBUG
     print("M[0] @ root   : ",0);                                // Print identifier
     print((cells.end()-1)->M[0]);                               // Print monopole of root (should be 1 for test)

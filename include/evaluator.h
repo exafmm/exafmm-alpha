@@ -148,35 +148,6 @@ public:
     flagM2P[0][Cj] |= Icenter;                                  // Flip bit of periodic image flag
   }
 
-//! Get range of periodic images
-  int getPeriodicRange() {
-    int prange = 0;                                             //  Range of periodic images
-    for( int i=0; i!=IMAGES; ++i ) {                            //  Loop over periodic image sublevels
-      prange += int(pow(3,i));                                  //   Accumulate range of periodic images
-    }                                                           //  End loop over perioidc image sublevels
-    return prange;                                              // Return range of periodic images
-  }
-
-//! Create periodic images of bodies
-  Bodies periodicBodies(Bodies &bodies) {
-    Bodies jbodies;                                             // Vector for periodic images of bodies
-    int prange = getPeriodicRange();                            // Get range of periodic images
-    for( int ix=-prange; ix<=prange; ++ix ) {                   // Loop over x periodic direction
-      for( int iy=-prange; iy<=prange; ++iy ) {                 //  Loop over y periodic direction
-        for( int iz=-prange; iz<=prange; ++iz ) {               //   Loop over z periodic direction
-          for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {//    Loop over bodies
-            Body body = *B;                                     //     Copy current body
-            body.X[0] += ix * 2 * R0;                           //     Shift x position
-            body.X[1] += iy * 2 * R0;                           //     Shift y position
-            body.X[2] += iz * 2 * R0;                           //     Shift z position
-            jbodies.push_back(body);                            //     Push shifted body into jbodies
-          }                                                     //    End loop over bodies
-        }                                                       //   End loop over z periodic direction
-      }                                                         //  End loop over y periodic direction
-    }                                                           // End loop over x periodic direction
-    return jbodies;                                             // Return vector for periodic images of bodies
-  }
-
 //! Traverse tree to get interaction list
   void traverse(Cells &cells, Cells &jcells, int method) {
     C_iter root = cells.end() - 1;                              // Iterator for root target cell
