@@ -10,6 +10,9 @@ int main() {
   FMM.setKernel("BiotSavart");
   FMM.initialize();
   FMM.IMAGES = 1;
+  FMM.IMAGEDIM[0] = 1;
+  FMM.IMAGEDIM[1] = 1;
+  FMM.IMAGEDIM[2] = 1;
   FMM.THETA = 1 / sqrtf(4);
   bool printNow = (MPIRANK == 0);
 
