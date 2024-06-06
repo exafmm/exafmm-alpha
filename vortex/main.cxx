@@ -12,7 +12,9 @@ int main() {
   const float nu      = 1e-2;
   Bodies bodies, bodies2;
   Cells cells;
+  printf("0\n");
   Vortex FMM(numGrid1D);
+  printf("1\n");
   FMM.initialize();
   FMM.IMAGES = 1;
   FMM.THETA = 1/sqrtf(4);

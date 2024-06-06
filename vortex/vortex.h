@@ -281,9 +281,9 @@ public:
     float ux2 = 0, ux3 = 0, ux4 = 0;
     float statSend[9], statRecv[9];
     for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {
-      umax = std::max(umax,std::abs(B->TRG[0]));
-      umax = std::max(umax,std::abs(B->TRG[1]));
-      umax = std::max(umax,std::abs(B->TRG[2]));
+      umax = std::max(umax,std::abs(float(B->TRG[0])));
+      umax = std::max(umax,std::abs(float(B->TRG[1])));
+      umax = std::max(umax,std::abs(float(B->TRG[2])));
       uu += B->TRG[0] * B->TRG[0];
       vv += B->TRG[1] * B->TRG[1];
       ww += B->TRG[2] * B->TRG[2];

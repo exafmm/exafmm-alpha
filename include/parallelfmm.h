@@ -5,19 +5,19 @@
 //! Handles all the communication of local essential trees
 class ParallelFMM : public Partition {
 private:
-  std::vector<int>    sendBodyCnt;                              //!< Vector of body send counts
-  std::vector<int>    sendBodyDsp;                              //!< Vector of body send displacements
-  std::vector<int>    recvBodyCnt;                              //!< Vector of body recv counts
-  std::vector<int>    recvBodyDsp;                              //!< Vector of body recv displacements
-  std::vector<int>    sendBodyRanks;                            //!< Vector of ranks to send bodies to
-  std::vector<int>    sendBodyCellCnt;                          //!< Vector of send counts for cells of bodies
-  std::vector<C_iter> sendBodyCells;                            //!< Vector of cell iterators for cells of bodies to send
-  std::vector<int>    sendCellCnt;                              //!< Vector of cell send counts
-  std::vector<int>    sendCellDsp;                              //!< Vector of cell send displacements
-  std::vector<int>    recvCellCnt;                              //!< Vector of cell recv counts
-  std::vector<int>    recvCellDsp;                              //!< Vector of cell recv displacements
-  std::vector<vect>   xminAll;                                  //!< Buffer for gathering XMIN
-  std::vector<vect>   xmaxAll;                                  //!< Buffer for gathering XMAX
+  std::vector<int>	sendBodyCnt;                            //!< Vector of body send counts
+  std::vector<int>	sendBodyDsp;                            //!< Vector of body send displacements
+  std::vector<int>	recvBodyCnt;                            //!< Vector of body recv counts
+  std::vector<int>	recvBodyDsp;                            //!< Vector of body recv displacements
+  std::vector<int>	sendBodyRanks;                          //!< Vector of ranks to send bodies to
+  std::vector<int>	sendBodyCellCnt;                        //!< Vector of send counts for cells of bodies
+  std::vector<C_iter>	sendBodyCells;                          //!< Vector of cell iterators for cells of bodies to send
+  std::vector<int>	sendCellCnt;                            //!< Vector of cell send counts
+  std::vector<int>	sendCellDsp;                            //!< Vector of cell send displacements
+  std::vector<int>	recvCellCnt;                            //!< Vector of cell recv counts
+  std::vector<int>	recvCellDsp;                            //!< Vector of cell recv displacements
+  std::vector<vect>	xminAll;                                //!< Buffer for gathering XMIN
+  std::vector<vect>	xmaxAll;                                //!< Buffer for gathering XMAX
 
   JBodies sendBodies;                                           //!< Send buffer for bodies
   JBodies recvBodies;                                           //!< Recv buffer for bodies
@@ -37,11 +37,11 @@ private:
     sendCellDsp.resize(MPISIZE);                                // Resize vector of cell send displacements
     recvCellCnt.resize(MPISIZE);                                // Resize vector of cell recv counts
     recvCellDsp.resize(MPISIZE);                                // Resize vector of cell recv displacements
-    MPI_Datatype MPI_TYPE = getType(XMIN[LEVEL][0]);            // Get MPI data type
-    MPI_Allgather(&XMIN[LEVEL][0],3,MPI_TYPE,                   // Gather XMIN
-                  &xminAll[0][0],3,MPI_TYPE,MPI_COMM_WORLD);
-    MPI_Allgather(&XMAX[LEVEL][0],3,MPI_TYPE,                   // Gather XMAX
-                  &xmaxAll[0][0],3,MPI_TYPE,MPI_COMM_WORLD);
+    MPI_Datatype MPI_TYPE = getType(XMIN[0]);                   // Get MPI data type
+    MPI_Allgather(&XMIN[0],3,MPI_TYPE,                          // Gather XMIN
+                  &xminAll[0],3,MPI_TYPE,MPI_COMM_WORLD);
+    MPI_Allgather(&XMAX[0],3,MPI_TYPE,                          // Gather XMAX
+                  &xmaxAll[0],3,MPI_TYPE,MPI_COMM_WORLD);
   }
 
 //! Get neighbor ranks to send to
@@ -53,8 +53,8 @@ private:
     for( int irank=0; irank!=MPISIZE; ++irank ) {               // Loop over ranks
       int ic = 0;                                               //  Initialize neighbor dimension counter
       for( int d=0; d!=3; ++d ) {                               //  Loop over dimensions
-        if(xminAll[irank][d] < 2 * XMAX[LEVEL][d] - XMIN[LEVEL][d] &&// If the two domains are touching or overlapping
-           xmaxAll[irank][d] > 2 * XMIN[LEVEL][d] - XMAX[LEVEL][d]) {// in all dimensions, they are neighboring domains
+        if(xminAll[irank][d] < 2 * XMAX[d] - XMIN[d] &&         // If the two domains are touching or overlapping
+           xmaxAll[irank][d] > 2 * XMIN[d] - XMAX[d]) {         // in all dimensions, they are neighboring domains
           ic++;                                                 //    Increment neighbor dimension counter
         }                                                       //   Endif for overlapping domains
       }                                                         //  End loop over dimensions
@@ -127,110 +127,6 @@ private:
     }
   }
 
-//! Communicate cells by one-to-one MPI_Alltoallv
-  void commBodiesAlltoall() {
-    assert(isPowerOfTwo(MPISIZE));                              // Make sure the number of processes is a power of two
-    int bytes = sizeof(sendBodies[0]);                          // Byte size of jbody structure
-    int *scntd = new int [MPISIZE];                             // Permuted send count
-    int *rcntd = new int [MPISIZE];                             // Permuted recv count
-    int *rdspd = new int [MPISIZE];                             // Permuted recv displacement
-    int *irev  = new int [MPISIZE];                             // Map original to compressed index
-    JBodies sendBuffer = sendBodies;                            // Send buffer
-    JBodies recvBuffer;                                         // Recv buffer
-    for( int l=0; l!=LEVEL; ++l ) {                             // Loop over levels of N-D hypercube communication
-      int npart = 1 << (LEVEL - l - 1);                         // Size of partition block
-      int scnt2[2], sdsp2[2], rcnt2[2], rdsp2[2];               // Send/recv counts/displacements per level
-      int ic = 0;                                               // Initialize counter
-      for( int i=0; i!=2; ++i ) {                               // Loop over the two blocks
-        scnt2[i] = 0;                                           //  Initialize send count per level
-        for( int irank=0; irank!=MPISIZE/2; ++irank ) {         //  Loop over ranks in each block
-          int idata = (irank / npart) * 2 * npart + irank % npart + i * npart;// Original index
-          int isend = i * MPISIZE / 2 + irank;                  //   Compressed index
-          irev[idata] = isend;                                  //   Map original to compressed index
-          scntd[isend] = sendBodyCnt[idata];                    //   Permuted send count
-          scnt2[i] += sendBodyCnt[idata] * bytes;               //   Send count per block
-          for( int id=sendBodyDsp[idata]; id!=sendBodyDsp[idata]+sendBodyCnt[idata]; ++id,++ic ) {// Loop over bodies
-            sendBuffer[ic] = sendBodies[id];                    //    Fill send buffer
-          }                                                     //   End loop over bodies
-        }                                                       //  End loop over ranks in each block
-      }                                                         // End loop over blocks
-      MPI_Alltoall(scntd,MPISIZE/2,MPI_INT,rcntd,MPISIZE/2,MPI_INT,MPI_COMM[l+1][2]);// Comm permuted count
-      MPI_Alltoall(scnt2,1,MPI_INT,rcnt2,1,MPI_INT,MPI_COMM[l+1][2]);// Comm send count per block
-      sdsp2[0] = 0; sdsp2[1] = scnt2[0];                        // Set send displacement
-      rdsp2[0] = 0; rdsp2[1] = rcnt2[0];                        // Set recv displacement
-      int rsize = (rdsp2[1] + rcnt2[1]) / bytes;                // Size of recieved bodies
-      sendBodies.resize(rsize);                                 // Resize send bodies
-      sendBuffer.resize(rsize);                                 // Resize send buffer
-      recvBuffer.resize(rsize);                                 // Resize recv buffer
-      MPI_Alltoallv(&sendBuffer[0],scnt2,sdsp2,MPI_BYTE,        // Communicate cells
-                    &recvBuffer[0],rcnt2,rdsp2,MPI_BYTE,MPI_COMM[l+1][2]);// MPI_COMM[2] is for the one-to-one pair
-      rdspd[0] = 0;                                             // Initialize permuted recv displacement
-      for( int irank=0; irank!=MPISIZE-1; ++irank ) {           // Loop over ranks
-        rdspd[irank+1] = rdspd[irank] + rcntd[irank];           //  Set permuted recv displacement
-      }                                                         // End loop over ranks
-      ic = 0;                                                   // Initiaize counter
-      for( int i=0; i!=2; ++i ) {                               // Loop over the two blocks
-        for( int irank=0; irank!=MPISIZE/2; ++irank ) {         //  Loop over ranks in each block
-          int idata = (irank / npart) * 2 * npart + irank % npart + i * npart;// Original index
-          int irecv = i * MPISIZE / 2 + irank;                  //   Compressed index
-          recvBodyCnt[idata] = rcntd[irecv];                    //   Set recv cound
-          idata = irev[irecv];                                  //   Set premuted index
-          for( int id=rdspd[idata]; id!=rdspd[idata]+rcntd[idata]; ++id,++ic ) {// Loop over bodies
-            sendBodies[ic] = recvBuffer[id];                    //    Get data from recv buffer
-          }                                                     //   End loop over bodies
-        }                                                       //  End loop over ranks in each block
-      }                                                         // End loop over blocks
-      recvBodyDsp[0] = 0;                                       // Initialize recv displacement
-      for( int irank=0; irank!=MPISIZE-1; ++irank ) {           // Loop over ranks
-        recvBodyDsp[irank+1] = recvBodyDsp[irank] + recvBodyCnt[irank];//  Set recv displacement
-      }                                                         // End loop over ranks
-      for( int irank=0; irank!=MPISIZE; ++irank ) {             // Loop over ranks
-        sendBodyCnt[irank] = recvBodyCnt[irank];                //  Get next send count
-        sendBodyDsp[irank] = recvBodyDsp[irank];                //  Get next send displacement
-      }                                                         // End loop over ranks
-    }                                                           // End loop over levels of N-D hypercube communication
-    recvBodies = sendBodies;                                    // Copy send bodies to recv bodies
-    delete[] scntd;                                             // Delete permuted send count
-    delete[] rcntd;                                             // Delete permuted recv count
-    delete[] rdspd;                                             // Delete permuted recv displacement
-    delete[] irev;                                              // Delete map from original to compressed index
-  }
-
-//! Get boundries of domains on other processes
-  void getOtherDomain(vect &xmin, vect &xmax, int l) {
-    startTimer("Get domain   ");                                // Start timer
-    MPI_Datatype MPI_TYPE = getType(XMIN[l][0]);                // Get MPI data type
-    vect send[2],recv[2];                                       // Send and recv buffer
-    MPI_Request req;                                            // MPI requests
-    send[0] = send[1] = XMIN[l];                                // Set XMIN into send buffer
-    recv[0] = recv[1] = 0;                                      // Initialize recv buffer
-    MPI_Alltoall(send,3,MPI_TYPE,recv,3,MPI_TYPE,MPI_COMM[l][2]);// Communicate XMIN
-    xmin = recv[1-key[l][2]];                                   // Copy xmin from recv buffer
-    send[0] = send[1] = XMAX[l];                                // Set XMAX into send buffer
-    recv[0] = recv[1] = 0;                                      // Initialize recv buffer
-    MPI_Alltoall(send,3,MPI_TYPE,recv,3,MPI_TYPE,MPI_COMM[l][2]);// Communicate XMAX
-    xmax = recv[1-key[l][2]];                                   // Copy xmax from recv buffer
-    if( nprocs[l-1][0] % 2 == 1 && nprocs[l][0] >= nprocs[l][1] ) {// If right half of odd group
-      int isend = (key[l][0] + 1            ) % nprocs[l][0];   //  Send to next rank (wrapped)
-      int irecv = (key[l][0] - 1 + nprocs[l][0]) % nprocs[l][0];//  Recv from previous rank (wrapped)
-      send[0] = xmin;                                           //  Set xmin in send buffer
-      MPI_Isend(send,3,MPI_TYPE,isend,0,MPI_COMM[l][0],&req);   //  Send to next rank
-      MPI_Irecv(recv,3,MPI_TYPE,irecv,0,MPI_COMM[l][0],&req);   //  Recv from previous rank
-      MPI_Wait(&req,MPI_STATUS_IGNORE);                         //  Wait for recv to finish
-      if( color[l][0] != color[l][1] ) xmin = recv[0];          //  Update only if leftover process of odd group
-      send[0] = xmax;                                           //  Set xmax in send buffer
-      MPI_Isend(send,3,MPI_TYPE,isend,0,MPI_COMM[l][0],&req);   //  Send to next rank
-      MPI_Irecv(recv,3,MPI_TYPE,irecv,0,MPI_COMM[l][0],&req);   //  Recv from previous rank
-      MPI_Wait(&req,MPI_STATUS_IGNORE);                         //  Wait for recv to finish
-      if( color[l][0] != color[l][1] ) xmax = recv[0];          //  Update only if leftover process of odd group
-    }                                                           // Endif for right half of odd group
-    if( nprocs[l-1][0] == 1 ) {                                 // If previous group had one process
-      xmin = XMIN[l];                                           //  Use own XMIN value for xmin
-      xmax = XMAX[l];                                           //  Use own XMAX value for xmax
-    }                                                           // Endif for isolated process
-    stopTimer("Get domain   ",printNow);                        // Stop timer 
-  }
-
 //! Get disatnce to other domain
   real getDistance(C_iter C, vect xmin, vect xmax) {
     vect dist;                                                  // Distance vector
@@ -285,55 +181,6 @@ private:
       cell.M     = C->M;                                        //  Set Multipoles of compact cell type
       sendCells.push_back(cell);                                //  Push cell into send buffer vector
     }                                                           // Endif for root cells children
-  }
-
-//! Communicate cells by one-to-one MPI_Alltoallv
-  void commCellsAlltoall(int l) {
-    const int bytes = sizeof(sendCells[0]);                     // Byte size of JCell structure
-    int rcnt[2], scnt[2] = {0, 0};                              // Recv count, send count
-    scnt[1-key[l+1][2]] = sendCells.size()*bytes;               // Set send count to size of send buffer * bytes
-    MPI_Alltoall(scnt,1,MPI_INT,rcnt,1,MPI_INT,MPI_COMM[l+1][2]);// Communicate the send count to get recv count
-    int sdsp[2] = {0, scnt[0]};                                 // Send displacement
-    int rdsp[2] = {0, rcnt[0]};                                 // Recv displacement
-    if( color[l+1][0] != color[l+1][1] ) {                      // If leftover process of odd group
-      rcnt[1-key[l+1][2]] = 0;                                  //  It won't have a pair for this communication
-    }                                                           // Endif for leftover process of odd group
-    recvCells.resize(rcnt[1-key[l+1][2]]/bytes);                // Resize recv buffer
-    MPI_Alltoallv(&sendCells[0],scnt,sdsp,MPI_BYTE,             // Communicate cells
-                  &recvCells[0],rcnt,rdsp,MPI_BYTE,MPI_COMM[l+1][2]);// MPI_COMM[2] is for the one-to-one pair
-  }
-
-//! Communicate cells by scattering from leftover processes
-  void commCellsScatter(int l) {
-    const int bytes = sizeof(sendCells[0]);                     // Byte size of JCell structure
-    int numScatter = nprocs[l+1][1] - 1;                        // Number of processes to scatter to
-    int oldSize = recvCells.size();                             // Size of recv buffer before communication
-    int *scnt = new int [nprocs[l+1][1]];                       // Send count
-    int *sdsp = new int [nprocs[l+1][1]];                       // Send displacement
-    int rcnt;                                                   // Recv count
-    if( key[l+1][1] == numScatter ) {                           // If this is the leftover proc to scatter from
-      sdsp[0] = 0;                                              //  Initialize send displacement
-      for(int i=0; i!=numScatter; ++i ) {                       //  Loop over processes to send to
-        int begin = 0, end = sendCells.size();                  //   Set begin and end of range to send
-        splitRange(begin,end,i,numScatter);                     //   Split range into numScatter and get i-th range
-        scnt[i] = end - begin;                                  //   Set send count based on range
-        sdsp[i+1] = sdsp[i] + scnt[i];                          //   Set send displacement based on send count
-      }                                                         //  End loop over processes to send to
-      scnt[numScatter] = 0;                                     //  Send count to self should be 0
-    }                                                           // Endif for leftover proc
-    MPI_Scatter(scnt,1,MPI_INT,&rcnt,1,MPI_INT,numScatter,MPI_COMM[l+1][1]);// Scatter the send count to get recv count
-
-    recvCells.resize(oldSize+rcnt);                             // Resize recv buffer based on recv count
-    for(int i=0; i!= nprocs[l+1][1]; ++i ) {                    // Loop over group of processes
-      scnt[i] *= bytes;                                         //  Multiply send count by byte size of data
-      sdsp[i] *= bytes;                                         //  Multiply send displacement by byte size of data
-    }                                                           // End loop over group of processes
-    rcnt *= bytes;                                              // Multiply recv count by byte size of data
-    MPI_Scatterv(&sendCells[0],      scnt,sdsp,MPI_BYTE,        // Communicate cells via MPI_Scatterv
-                 &recvCells[oldSize],rcnt,     MPI_BYTE,        // Offset recv buffer by oldSize
-                 numScatter,MPI_COMM[l+1][1]);
-    delete[] scnt;                                              // Delete send count
-    delete[] sdsp;                                              // Delete send displacement
   }
 
 //! Turn recv bodies to twigs
@@ -467,18 +314,6 @@ private:
     stopTimer("Reindex      ",printNow);                        // Stop timer 
   }
 
-//! Turn sticks to send buffer
-  void sticks2send(Cells &sticks, int &offTwigs) {
-    while( !sticks.empty() ) {                                  // While stick vector is not empty
-      JCell cell;                                               //  Cell structure
-      cell.ICELL = sticks.back().ICELL;                         //  Set index of cell
-      cell.M     = sticks.back().M;                             //  Set multipole of cell
-      sendCells.push_back(cell);                                //  Push cell into send buffer
-      sticks.pop_back();                                        //  Pop last element of stick vector
-    }                                                           // End while for stick vector
-    offTwigs = sendCells.size();                                // Keep track of current send buffer size
-  }
-
 //! Validate number of send cells
   void checkNumCells(int l) {                                   // Only works with octsection
     int maxLevel = int(log(MPISIZE-1) / M_LN2 / 3) + 1;
@@ -537,7 +372,6 @@ public:
     getSendCount(comm);                                         // Get size of data to send
     stopTimer("Get send cnt ",printNow);                        // Stop timer 
     startTimer("Alltoall B   ");                                // Start timer
-#if 1
     int bytes = sizeof(sendBodies[0]);                          // Byte size of jbody structure
     for( int i=0; i!=MPISIZE; ++i ) {                           // Loop over ranks
       sendBodyCnt[i] *= bytes;                                  //  Multiply by bytes
@@ -553,9 +387,6 @@ public:
       recvBodyCnt[i] /= bytes;                                  //  Divide by bytes
       recvBodyDsp[i] /= bytes;                                  //  Divide by bytes
     }                                                           // End loop over ranks
-#else
-    commBodiesAlltoall();
-#endif
     sendBodies.clear();                                         // Clear send buffer for bodies
     stopTimer("Alltoall B   ",printNow);                        // Stop timer 
   }
