@@ -153,7 +153,11 @@ public:
     C_iter root = cells.end() - 1;                              // Iterator for root target cell
     C_iter jroot = jcells.end() - 1;                            // Iterator for root source cell
     if( IMAGES != 0 ) {                                         // If periodic boundary condition
-      jroot = jcells.end() - 1 - 26 * (IMAGES - 1);             //  The root is not at the end
+      int numNeighbors;                                         //  Number of neighbors
+      for (int d=0; d<3; d++)                                   //  Loop over dimensions
+        numNeighbors *= IMAGEDIM[d] == 0 ? 1 : 3;               //   Multiply by 3 for each dimension
+      numNeighbors--;                                           //  Subtract self
+      jroot = jcells.end() - 1 - numNeighbors * (IMAGES - 1);   //  The root is not at the end
     }                                                           // Endif for periodic boundary condition
     CI0 = cells.begin();                                        // Set begin iterator for target cells
     CJ0 = jcells.begin();                                       // Set begin iterator for source cells
@@ -179,9 +183,9 @@ public:
       }                                                         //  End while loop for interaction stack
     } else {                                                    // If periodic boundary condition
       int I = 0;                                                //  Initialize index of periodic image
-      for( int ix=-1; ix<=1; ++ix ) {                           //  Loop over x periodic direction
-        for( int iy=-1; iy<=1; ++iy ) {                         //   Loop over y periodic direction
-          for( int iz=-1; iz<=1; ++iz, ++I ) {                  //    Loop over z periodic direction
+      for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {       //  Loop over x periodic direction
+        for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {     //   Loop over y periodic direction
+          for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz, ++I ) {//  Loop over z periodic direction
             Iperiodic = 1 << I;                                 //     Set periodic image flag
             Xperiodic[0] = ix * 2 * R0;                         //     Coordinate offset for x periodic direction
             Xperiodic[1] = iy * 2 * R0;                         //     Coordinate offset for y periodic direction
@@ -217,9 +221,9 @@ public:
     pccells.push_back(jcells.back());                           // Root cell is first periodic cell
     for( int level=0; level<IMAGES-1; ++level ) {               // Loop over sublevels of tree
       C_iter C = pccells.end() - 1;                             //  Set previous periodic cell as source
-      for( int ix=-1; ix<=1; ++ix ) {                           //  Loop over x periodic direction
-        for( int iy=-1; iy<=1; ++iy ) {                         //   Loop over y periodic direction
-          for( int iz=-1; iz<=1; ++iz ) {                       //    Loop over z periodic direction
+      for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {       //  Loop over x periodic direction
+        for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {     //   Loop over y periodic direction
+          for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz ) {   //    Loop over z periodic direction
             Cell cell;                                          //     New periodic jcell for M2M
             cell.X[0] = C->X[0] + ix * 2 * C->R;                //     Set new x coordinate for periodic image
             cell.X[1] = C->X[1] + iy * 2 * C->R;                //     Set new y cooridnate for periodic image
@@ -239,9 +243,9 @@ public:
         selectM2M_CPU();                                        //   Select M2M_CPU kernel
         pjcells.pop_back();                                     //   Pop last element from periodic jcell vector
       }                                                         //  End while for remaining periodic jcells
-      for( int ix=-1; ix<=1; ++ix ) {                           //  Loop over x periodic direction
-        for( int iy=-1; iy<=1; ++iy ) {                         //   Loop over y periodic direction
-          for( int iz=-1; iz<=1; ++iz ) {                       //    Loop over z periodic direction
+      for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {       //  Loop over x periodic direction
+        for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {     //   Loop over y periodic direction
+          for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz ) {   //    Loop over z periodic direction
             if( ix != 0 || iy != 0 || iz != 0 ) {               //     If periodic cell is not at center
               cell.X[0]  = CI->X[0] + ix * 2 * CI->R;           //      Set new x coordinate for periodic image
               cell.X[1]  = CI->X[1] + iy * 2 * CI->R;           //      Set new y cooridnate for periodic image

@@ -68,9 +68,9 @@ private:
               real R = getDistance(C,xminAll[irank],xmaxAll[irank]);//  Get distance to other domain
               send |= CLET * C->R > THETA * R - EPS2;           //      If the cell seems close enough for P2P
             } else {                                            //     If periodic boundary condition
-              for( int ix=-1; ix<=1; ++ix ) {                   //      Loop over x periodic direction
-                for( int iy=-1; iy<=1; ++iy ) {                 //       Loop over y periodic direction
-                  for( int iz=-1; iz<=1; ++iz ) {               //        Loop over z periodic direction
+              for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {//     Loop over x periodic direction
+                for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {//    Loop over y periodic direction
+                  for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz ) {//   Loop over z periodic direction
                     Xperiodic[0] = ix * 2 * R0;                 //         Coordinate offset for x periodic direction
                     Xperiodic[1] = iy * 2 * R0;                 //         Coordinate offset for y periodic direction
                     Xperiodic[2] = iz * 2 * R0;                 //         Coordinate offset for z periodic direction
@@ -152,9 +152,9 @@ private:
         real R = getDistance(CC,xmin,xmax);                     //   Get distance to other domain
         divide |= CLET * CC->R > THETA * R - EPS2;              //   If the cell seems too close and not twig
       } else {                                                  //  If periodic boundary condition
-        for( int ix=-1; ix<=1; ++ix ) {                         //   Loop over x periodic direction
-          for( int iy=-1; iy<=1; ++iy ) {                       //    Loop over y periodic direction
-            for( int iz=-1; iz<=1; ++iz ) {                     //     Loop over z periodic direction
+        for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {     //   Loop over x periodic direction
+          for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {   //    Loop over y periodic direction
+            for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz ) { //     Loop over z periodic direction
               Xperiodic[0] = ix * 2 * R0;                       //      Coordinate offset for x periodic direction
               Xperiodic[1] = iy * 2 * R0;                       //      Coordinate offset for y periodic direction
               Xperiodic[2] = iz * 2 * R0;                       //      Coordinate offset for z periodic direction

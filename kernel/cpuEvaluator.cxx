@@ -71,9 +71,13 @@ void Evaluator::timeKernels() {                                 // Time all kern
 
 void Evaluator::traversePeriodic(Cells &cells, Cells &jcells, int method) {// Traverse tree for periodic cells
   Xperiodic = 0;                                                // Set periodic coordinate offset
+  int numNeighbors;                                             // Number of neighbors
+  for (int d=0; d<3; d++)                                       // Loop over dimensions
+    numNeighbors *= IMAGEDIM[d] == 0 ? 1 : 3;                   //  Multiply by 3 for each dimension
+  numNeighbors--;                                               // Subtract self
   C_iter Cj = jcells.end()-1;                                   // Initialize iterator for periodic source cell
   for( int level=0; level<IMAGES-1; ++level ) {                 // Loop over sublevels of tree
-    for( int I=0; I!=26; ++I, --Cj ) {                          //  Loop over periodic images (exclude center)
+    for( int I=0; I!=numNeighbors; ++I, --Cj ) {                //  Loop over periodic images (exclude center)
       switch (method) {                                         //   Switch between method
       case 0 :                                                  //   0 : treecode
         for( C_iter Ci=cells.begin(); Ci!=cells.end(); ++Ci ) { //   Loop over cells
@@ -101,10 +105,13 @@ void Evaluator::evalP2P(Bodies &ibodies, Bodies &jbodies, bool onCPU) {// Evalua
   BJ0 = jbodies.begin();                                        // Set source bodies begin iterator
   BJN = jbodies.end();                                          // Set source bodies end iterator
   int range = (pow(3,IMAGES) - 1) / 2;                          // Compute periodic range
+  int xrange = range * IMAGEDIM[0];                             // Periodic range in x dimension
+  int yrange = range * IMAGEDIM[1];                             // Periodic range in y dimension
+  int zrange = range * IMAGEDIM[2];                             // Periodic range in z dimension
 #pragma omp parallel for collapse(3)
-  for( int ix=-range; ix<=range; ++ix ) {                       // Loop over x periodic direction
-    for( int iy=-range; iy<=range; ++iy ) {                     //  Loop over y periodic direction
-      for( int iz=-range; iz<=range; ++iz ) {                   //   Loop over z periodic direction
+  for( int ix=-xrange; ix<=xrange; ++ix ) {                     // Loop over x periodic direction
+    for( int iy=-yrange; iy<=yrange; ++iy ) {                   //  Loop over y periodic direction
+      for( int iz=-zrange; iz<=zrange; ++iz ) {                 //   Loop over z periodic direction
 	vect Xp;                                                //    Define coordinate offset vector
         Xp[0] = ix * 2 * R0;                                    //    Coordinate offset for x periodic direction
         Xp[1] = iy * 2 * R0;                                    //    Coordinate offset for y periodic direction
@@ -145,9 +152,9 @@ void Evaluator::evalM2L(Cells &cells, bool kernel) {            // Evaluate M2L
         CJ = listM2L[CI-CI0].back();                            //   Set source cell iterator
         Iperiodic = flagM2L[CI-CI0][CJ];                        //   Set periodic image flag
         int I = 0;                                              //   Initialize index of periodic image
-        for( int ix=-1; ix<=1; ++ix ) {                         //   Loop over x periodic direction
-          for( int iy=-1; iy<=1; ++iy ) {                       //    Loop over y periodic direction
-            for( int iz=-1; iz<=1; ++iz, ++I ) {                //     Loop over z periodic direction
+        for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {     //   Loop over x periodic direction
+          for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {   //    Loop over y periodic direction
+            for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz, ++I ) {//  Loop over z periodic direction
               if( Iperiodic & (1 << I) ) {                      //      If periodic flag is on
                 Xperiodic[0] = ix * 2 * R0;                     //       Coordinate offset for x periodic direction
                 Xperiodic[1] = iy * 2 * R0;                     //       Coordinate offset for y periodic direction
@@ -175,9 +182,9 @@ void Evaluator::evalM2P(Cells &cells, bool kernel) {            // Evaluate M2P
         CJ = listM2P[CI-CI0].back();                            //   Set source cell iterator
         Iperiodic = flagM2P[CI-CI0][CJ];                        //   Set periodic image flag
         int I = 0;                                              //   Initialize index of periodic image
-        for( int ix=-1; ix<=1; ++ix ) {                         //   Loop over x periodic direction
-          for( int iy=-1; iy<=1; ++iy ) {                       //    Loop over y periodic direction
-            for( int iz=-1; iz<=1; ++iz, ++I ) {                //     Loop over z periodic direction
+        for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {     //   Loop over x periodic direction
+          for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {   //    Loop over y periodic direction
+            for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz, ++I ) {//  Loop over z periodic direction
               if( Iperiodic & (1 << I) ) {                      //      If periodic flag is on
                 Xperiodic[0] = ix * 2 * R0;                     //       Coordinate offset for x periodic direction
                 Xperiodic[1] = iy * 2 * R0;                     //       Coordinate offset for y periodic direction
@@ -209,9 +216,9 @@ void Evaluator::evalP2P(Cells &cells, bool kernel) {            // Evaluate P2P
         BJN = CJ->LEAF + CJ->NLEAF;                             //   Set source bodies end iterator
         Iperiodic = flagP2P[CI-CI0][CJ];                        //   Set periodic image flag
         int I = 0;                                              //   Initialize index of periodic image
-        for( int ix=-1; ix<=1; ++ix ) {                         //   Loop over x periodic direction
-          for( int iy=-1; iy<=1; ++iy ) {                       //    Loop over y periodic direction
-            for( int iz=-1; iz<=1; ++iz, ++I ) {                //     Loop over z periodic direction
+        for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {     //   Loop over x periodic direction
+          for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {   //    Loop over y periodic direction
+            for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz, ++I ) {//  Loop over z periodic direction
               if( Iperiodic & (1 << I) ) {                      //      If periodic flag is on
 		vect Xp;                                        //       Define coordinate offset vector
                 Xp[0] = ix * 2 * R0;                            //       Coordinate offset for x periodic direction

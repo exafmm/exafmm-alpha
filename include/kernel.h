@@ -44,6 +44,7 @@ protected:
   complex *Cnm;                                                 //!< M2L translation matrix \f$ C_{jn}^{km} \f$
 public:
   int IMAGES;                                                   //!< Number of periodic image sublevels
+  int IMAGEDIM[3];                                              //!< Periodic dimensions
   real THETA;                                                   //!< Box opening criteria
   real NP2P;                                                    //!< Number of P2P kernel call
   real NM2P;                                                    //!< Number of M2P kernel call

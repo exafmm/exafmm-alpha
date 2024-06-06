@@ -15,6 +15,9 @@ int main() {
   Vortex FMM(numGrid1D);
   FMM.initialize();
   FMM.IMAGES = 1;
+  FMM.IMAGEDIM[0] = 1;
+  FMM.IMAGEDIM[1] = 1;
+  FMM.IMAGEDIM[2] = 1;
   FMM.THETA = 1/sqrtf(4);
   FMM.setKernel("Gaussian");
   bool printNow = (MPIRANK == 0);
@@ -32,11 +35,11 @@ int main() {
   FMM.stopTimer("Validate data",printNow);
   FMM.eraseTimer("Validate data");
 
-  for( int step=0; step!=numSteps; ++step ) {
+  for (int step=0; step<numSteps; step++) {
     FMM.print("Step          : ",0);
     FMM.print(step,0);
     FMM.print("\n",0);
-    if( step%(numSkip+1) == 0 ) {
+    if (step%(numSkip+1) == 0) {
       FMM.startTimer("Statistics   ");
       FMM.gridVelocity(bodies,bodies2,cells);
       FMM.statistics(bodies2,nu,dt);
@@ -59,7 +62,7 @@ int main() {
     FMM.stopTimer("Convect      ",printNow);
     FMM.eraseTimer("Convect      ");
 
-    if( step%(numSkip2+1) == numSkip2 ) {
+    if (step%(numSkip2+1) == numSkip2) {
       FMM.startTimer("Reinitialize ");
       FMM.reinitialize(bodies,cells);
       FMM.stopTimer("Reinitialize ",printNow);
@@ -70,8 +73,8 @@ int main() {
   }
 
 #ifdef VTK
-  for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) B->ICELL = 0;
-  for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) B->ICELL = 0;
+  for (C_iter C=cells.begin(); C!=cells.end(); C++) {
     Body body;
     body.ICELL = 1;
     body.X = C->X;
@@ -81,17 +84,17 @@ int main() {
 
   int Ncell = 0;
   vtkPlot vtk;
-  if( MPIRANK == 0 ) {
+  if (MPIRANK == 0) {
     vtk.setDomain(FMM.getR0(),FMM.getX0());
     vtk.setGroupOfPoints(bodies,Ncell);
   }
-  for( int i=1; i!=MPISIZE; ++i ) {
+  for (int i=1; i<MPISIZE; i++) {
     FMM.shiftBodies(bodies);
-    if( MPIRANK == 0 ) {
+    if (MPIRANK == 0) {
       vtk.setGroupOfPoints(bodies,Ncell);
     }
   }
-  if( MPIRANK == 0 ) {
+  if (MPIRANK == 0) {
     vtk.plot(Ncell);
   }
 #endif
