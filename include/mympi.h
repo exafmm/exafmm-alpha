@@ -15,10 +15,8 @@ public:
 
 //! Constructor, initialize WAIT time
   MyMPI() : WAIT(100) {                                         // Constructor, initialize WAIT time
-    int argc(0);                                                // Dummy argument count
-    char **argv;                                                // Dummy argument value
     MPI_Initialized(&FLAG);                                     // Check if MPI has been initialized
-    if(!FLAG) MPI_Init(&argc,&argv);                            // Initialize MPI communicator
+    if(!FLAG) MPI_Init(NULL,NULL);                              // Initialize MPI communicator
     MPI_Comm_size(MPI_COMM_WORLD,&MPISIZE);                     // Get number of MPI processes
     MPI_Comm_rank(MPI_COMM_WORLD,&MPIRANK);                     // Get rank of current MPI process
   }
