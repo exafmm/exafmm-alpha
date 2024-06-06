@@ -249,9 +249,13 @@ void Evaluator::timeKernels() {                                 // Time all kern
 }
 
 void Evaluator::traversePeriodic(Cells &cells, Cells &jcells, int method) {// Traverse tree for periodic cells
+  int numNeighbors;                                             // Number of neighbors
+  for (int d=0; d<3; d++)                                       // Loop over dimensions
+    numNeighbors *= IMAGEDIM[d] == 0 ? 1 : 3;                   //  Multiply by 3 for each dimension
+  numNeighbors--;                                               // Subtract self
   C_iter Cj = jcells.end()-1;                                   // Initialize iterator for periodic source cell
   for( int level=0; level<IMAGES-1; ++level ) {                 // Loop over sublevels of tree
-    for( int I=0; I!=26; ++I, --Cj ) {                          //  Loop over periodic images (exclude center)
+    for( int I=0; I!=numNeighbors; ++I, --Cj ) {                //  Loop over periodic images (exclude center)
       switch (method) {                                         //   Switch between method
       case 0 :                                                  //   0 : treecode
         for( C_iter Ci=cells.begin(); Ci!=cells.end(); ++Ci ) { //   Loop over cells
