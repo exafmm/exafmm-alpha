@@ -71,7 +71,7 @@ void Evaluator::timeKernels() {                                 // Time all kern
 
 void Evaluator::traversePeriodic(Cells &cells, Cells &jcells, int method) {// Traverse tree for periodic cells
   Xperiodic = 0;                                                // Set periodic coordinate offset
-  int numNeighbors;                                             // Number of neighbors
+  int numNeighbors = 1;                                         // Number of neighbors
   for (int d=0; d<3; d++)                                       // Loop over dimensions
     numNeighbors *= IMAGEDIM[d] == 0 ? 1 : 3;                   //  Multiply by 3 for each dimension
   numNeighbors--;                                               // Subtract self

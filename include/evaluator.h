@@ -153,7 +153,7 @@ public:
     C_iter root = cells.end() - 1;                              // Iterator for root target cell
     C_iter jroot = jcells.end() - 1;                            // Iterator for root source cell
     if( IMAGES != 0 ) {                                         // If periodic boundary condition
-      int numNeighbors;                                         //  Number of neighbors
+      int numNeighbors = 1;                                     //  Number of neighbors
       for (int d=0; d<3; d++)                                   //  Loop over dimensions
         numNeighbors *= IMAGEDIM[d] == 0 ? 1 : 3;               //   Multiply by 3 for each dimension
       numNeighbors--;                                           //  Subtract self
