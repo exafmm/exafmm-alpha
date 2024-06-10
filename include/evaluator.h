@@ -21,6 +21,7 @@ protected:
 
   int         Iperiodic;                                        //!< Periodic image flag (using each bit for images)
   const int   Icenter;                                          //!< Periodic image flag at center
+  const int   Iall;                                             //!< Periodic image flag for all neighbors
   Maps        flagM2L;                                          //!< Existance of periodic image for M2L
   Maps        flagM2P;                                          //!< Existance of periodic image for M2P
   Maps        flagP2P;                                          //!< Existance of periodic image for P2P
@@ -113,7 +114,7 @@ protected:
 
 public:
 //! Constructor
-  Evaluator() : Icenter(1 << 13) {}
+  Evaluator() : Icenter(8192), Iall(134217727) {}
 //! Destructor
   ~Evaluator() {}
 
@@ -130,22 +131,6 @@ public:
     } else if( name == "CoulombVdW" ) {                         //  If CoulombVdW
       kernelName = CoulombVdW;                                  //   Set kernel name to CoulombVdW
     }
-  }
-
-//! Add single list for kernel unit test
-  void addM2L(C_iter Cj) {
-    listM2L.resize(1);                                          // Resize vector of M2L interation lists
-    flagM2L.resize(1);                                          // Resize vector of M2L periodic image flags
-    listM2L[0].push_back(Cj);                                   // Push single cell into list
-    flagM2L[0][Cj] |= Icenter;                                  // Flip bit of periodic image flag
-  }
-
-//! Add single list for kernel unit test
-  void addM2P(C_iter Cj) {
-    listM2P.resize(1);                                          // Resize vector of M2P interation lists
-    flagM2P.resize(1);                                          // Resize vector of M2L periodic image flags
-    listM2P[0].push_back(Cj);                                   // Push single cell into list
-    flagM2P[0][Cj] |= Icenter;                                  // Flip bit of periodic image flag
   }
 
 //! Traverse tree to get interaction list

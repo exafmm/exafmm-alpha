@@ -446,6 +446,8 @@ __global__ void LaplaceP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *targetGlo
   int keys = keysGlob[blockIdx.x];
   int numList = rangeGlob[keys];
   gpureal D0 = -constDevc[0];
+  int images = int(constDevc[1]+0.5);
+  int range = (pow(3,images) - 1) / 2;
   gpureal targetX[3];
   gpureal target[4] = {0, 0, 0, 0};
   __shared__ gpureal sourceShrd[4*THREADS];
@@ -465,12 +467,29 @@ __global__ void LaplaceP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *targetGlo
       sourceShrd[4*threadIdx.x+2] = sourceGlob[7*isource+2];
       sourceShrd[4*threadIdx.x+3] = sourceGlob[7*isource+3];
       __syncthreads();
-      int I = 0;
-      for( int ix=-1; ix<=1; ++ix ) {
-        for( int iy=-1; iy<=1; ++iy ) {
-          for( int iz=-1; iz<=1; ++iz, ++I ) {
-            if( Iperiodic & (1 << I) ) {
-              float3 d;
+      if( range <= 1 ) {
+        int I = 0;
+        for( int ix=-1; ix<=1; ++ix ) {
+          for( int iy=-1; iy<=1; ++iy ) {
+            for( int iz=-1; iz<=1; ++iz, ++I ) {
+              if( Iperiodic & (1 << I) ) {
+                float3 d;
+                d.x = ix * D0;
+                d.y = iy * D0;
+                d.z = iz * D0;
+#pragma unroll 64
+                for( int i=0; i<THREADS; ++i ) {
+                  LaplaceP2P_core(target,targetX,sourceShrd,d,i);
+                }
+              }
+            }
+          }
+        }
+      } else {
+	for( int ix=-range; ix<=range; ++ix ) {
+          for( int iy=-range; iy<=range; ++iy ) {
+            for( int iz=-range; iz<=range; ++iz ) {
+	      float3 d;
               d.x = ix * D0;
               d.y = iy * D0;
               d.z = iz * D0;
@@ -478,9 +497,9 @@ __global__ void LaplaceP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *targetGlo
               for( int i=0; i<THREADS; ++i ) {
                 LaplaceP2P_core(target,targetX,sourceShrd,d,i);
               }
-            }
-          }
-        }
+	    }
+	  }
+	}
       }
     }
     int iblok = (size-1)/THREADS;
@@ -493,17 +512,32 @@ __global__ void LaplaceP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *targetGlo
       sourceShrd[4*threadIdx.x+3] = sourceGlob[7*isource+3];
     }
     __syncthreads();
-    int I = 0;
-    int icounter=0;
-    for( int ix=-1; ix<=1; ++ix ) {
-      for( int iy=-1; iy<=1; ++iy ) {
-        for( int iz=-1; iz<=1; ++iz, ++I ) {
-          if( Iperiodic & (1 << I) ) {
-            icounter++;
+    if( range <= 1 ) {
+      int I = 0;
+      for( int ix=-1; ix<=1; ++ix ) {
+        for( int iy=-1; iy<=1; ++iy ) {
+          for( int iz=-1; iz<=1; ++iz, ++I ) {
+            if( Iperiodic & (1 << I) ) {
+              float3 d;
+              d.x = ix * D0;
+              d.y = iy * D0;
+              d.z = iz * D0;
+              for( int i=0; i<size-iblok*THREADS; ++i ) {
+                LaplaceP2P_core(target,targetX,sourceShrd,d,i);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      for( int ix=-range; ix<=range; ++ix ) {
+        for( int iy=-range; iy<=range; ++iy ) {
+          for( int iz=-range; iz<=range; ++iz ) {
             float3 d;
             d.x = ix * D0;
             d.y = iy * D0;
             d.z = iz * D0;
+#pragma unroll 64
             for( int i=0; i<size-iblok*THREADS; ++i ) {
               LaplaceP2P_core(target,targetX,sourceShrd,d,i);
             }

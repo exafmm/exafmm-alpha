@@ -559,6 +559,8 @@ __global__ void BiotSavartP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
   int keys = keysGlob[blockIdx.x];
   int numList = rangeGlob[keys];
   gpureal D0 = -constDevc[0];
+  int images = int(constDevc[1]+0.5);
+  int range = (pow(3,images) - 1) / 2;
   gpureal targetX[3];
   gpureal target[3] = {0, 0, 0};
   __shared__ gpureal sourceShrd[7*THREADS];
@@ -581,12 +583,29 @@ __global__ void BiotSavartP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
       sourceShrd[7*threadIdx.x+5] = sourceGlob[7*isource+5];
       sourceShrd[7*threadIdx.x+6] = sourceGlob[7*isource+6];
       __syncthreads();
-      int I = 0;
-      for( int ix=-1; ix<=1; ++ix ) {
-        for( int iy=-1; iy<=1; ++iy ) {
-          for( int iz=-1; iz<=1; ++iz, ++I ) {
-            if( Iperiodic & (1 << I) ) {
-              float3 d;
+      if( range <= 1 ) {
+        int I = 0;
+        for( int ix=-1; ix<=1; ++ix ) {
+          for( int iy=-1; iy<=1; ++iy ) {
+            for( int iz=-1; iz<=1; ++iz, ++I ) {
+              if( Iperiodic & (1 << I) ) {
+                float3 d;
+                d.x = ix * D0;
+                d.y = iy * D0;
+                d.z = iz * D0;
+#pragma unroll 64
+                for( int i=0; i<THREADS; ++i ) {
+                  BiotSavartP2P_core(target,targetX,sourceShrd,d,i);
+                }
+              }
+            }
+          }
+        }
+      } else {
+	for( int ix=-range; ix<=range; ++ix ) {
+          for( int iy=-range; iy<=range; ++iy ) {
+            for( int iz=-range; iz<=range; ++iz ) {
+	      float3 d;
               d.x = ix * D0;
               d.y = iy * D0;
               d.z = iz * D0;
@@ -594,9 +613,9 @@ __global__ void BiotSavartP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
               for( int i=0; i<THREADS; ++i ) {
                 BiotSavartP2P_core(target,targetX,sourceShrd,d,i);
               }
-            }
-          }
-        }
+	    }
+	  }
+	}
       }
     }
     int iblok = (size-1)/THREADS;
@@ -612,17 +631,32 @@ __global__ void BiotSavartP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
       sourceShrd[7*threadIdx.x+6] = sourceGlob[7*isource+6];
     }
     __syncthreads();
-    int I = 0;
-    int icounter=0;
-    for( int ix=-1; ix<=1; ++ix ) {
-      for( int iy=-1; iy<=1; ++iy ) {
-        for( int iz=-1; iz<=1; ++iz, ++I ) {
-          if( Iperiodic & (1 << I) ) {
-            icounter++;
+    if( range <= 1 ) {
+      int I = 0;
+      for( int ix=-1; ix<=1; ++ix ) {
+        for( int iy=-1; iy<=1; ++iy ) {
+          for( int iz=-1; iz<=1; ++iz, ++I ) {
+            if( Iperiodic & (1 << I) ) {
+              float3 d;
+              d.x = ix * D0;
+              d.y = iy * D0;
+              d.z = iz * D0;
+              for( int i=0; i<size-iblok*THREADS; ++i ) {
+                BiotSavartP2P_core(target,targetX,sourceShrd,d,i);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      for( int ix=-range; ix<=range; ++ix ) {
+        for( int iy=-range; iy<=range; ++iy ) {
+          for( int iz=-range; iz<=range; ++iz ) {
             float3 d;
             d.x = ix * D0;
             d.y = iy * D0;
             d.z = iz * D0;
+#pragma unroll 64
             for( int i=0; i<size-iblok*THREADS; ++i ) {
               BiotSavartP2P_core(target,targetX,sourceShrd,d,i);
             }

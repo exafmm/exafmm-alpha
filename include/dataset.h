@@ -232,9 +232,9 @@ public:
       diff2 = norm2 = 0;                                        //  Set unused values to 0
       B_iter B2 = bodies2.begin();                              //  Set iterator for bodies2
       for( B_iter B=bodies.begin(); B!=bodies.end(); ++B, ++B2 ) {// Loop over bodies & bodies2
-//#ifdef DEBUG
+#ifdef DEBUG
         std::cout << B->ICELL << " " << B->TRG[0] << " " << B2->TRG[0] << std::endl;// Compare every element
-//#endif
+#endif
         diff1 += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);// Difference of x velocity
         diff1 += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]);// Difference of y velocity
         diff1 += (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]);// Difference of z velocity

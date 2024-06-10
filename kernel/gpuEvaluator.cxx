@@ -280,6 +280,7 @@ void Evaluator::evalP2P(Bodies &ibodies, Bodies &jbodies, bool onCPU) {// Evalua
   int numIcall = int(ibodies.size()-1)/MAXBODY+1;               // Number of icall loops
   int numJcall = int(jbodies.size()-1)/MAXBODY+1;               // Number of jcall loops
   int ioffset = 0;                                              // Initialzie offset for icall loops
+  Iperiodic = IMAGES == 0 ? Icenter : Iall;                     // Set periodic image flag
   for( int icall=0; icall!=numIcall; ++icall ) {                // Loop over icall
     BI0 = ibodies.begin()+ioffset;                              //  Set target bodies begin iterator
     BIN = ibodies.begin()+std::min(ioffset+MAXBODY,int(ibodies.size()));// Set target bodies end iterator
@@ -293,7 +294,7 @@ void Evaluator::evalP2P(Bodies &ibodies, Bodies &jbodies, bool onCPU) {// Evalua
         selectP2P_CPU(Xp);                                      //   Select P2P_CPU kernel
       } else {                                                  //  If calculation is to be done on GPU
         constHost.push_back(2*R0);                              //   Copy domain size to GPU buffer
-        //constHost.push_back(IMAGES);                            //   Copy number of images to GPU buffer
+        constHost.push_back(IMAGES);                            //   Copy number of images to GPU buffer
         for( B_iter B=BJ0; B!=BJN; ++B ) {                      //   Loop over source bodies
           sourceHost.push_back(B->X[0]);                        //   Copy x position to GPU buffer
           sourceHost.push_back(B->X[1]);                        //   Copy y position to GPU buffer
@@ -311,7 +312,7 @@ void Evaluator::evalP2P(Bodies &ibodies, Bodies &jbodies, bool onCPU) {// Evalua
         rangeHost.push_back(1);                                 //   Save size of interaction list
         rangeHost.push_back(0);                                 //   Set begin index of leafs
         rangeHost.push_back(BJN-BJ0);                           //   Set number of leafs
-        rangeHost.push_back(Icenter);                           //   Set periodic image flag
+        rangeHost.push_back(Iperiodic);                         //   Set periodic image flag
         for( B_iter B=BI0; B!=BIN; ++B ) {                      //   Loop over target bodies
           targetHost.push_back(B->X[0]);                        //    Copy x position to GPU buffer
           targetHost.push_back(B->X[1]);                        //    Copy y position to GPU buffer
@@ -485,6 +486,7 @@ void Evaluator::evalP2P(Cells &cells, bool kernel) {            // Evaluate P2P
     CIB = cells.begin()+ioffset;                                //  Set begin iterator for target per call
     CIE = cells.begin()+std::min(ioffset+numCell,int(cells.size()));// Set end iterator for target per call
     constHost.push_back(2*R0);                                  //  Copy domain size to GPU buffer
+    constHost.push_back(1);                                     //  Number of images should be 1 for cell P2P
     startTimer("Get list     ");                                //  Start timer
     for( CI=CIB; CI!=CIE; ++CI ) {                              //  Loop over target cells
       for( L_iter L=listP2P[CI-CI0].begin(); L!=listP2P[CI-CI0].end(); ++L ) {//  Loop over interaction list
