@@ -19,9 +19,7 @@
 
 typedef long                 bigint;                            //!< Big integer type
 typedef float                real;                              //!< Real number type on CPU
-//typedef double               real;                              //!< Real number type on CPU
 typedef float                gpureal;                           //!< Real number type on GPU
-//typedef double               gpureal;                           //!< Real number type on GPU
 typedef std::complex<double> complex;                           //!< Complex number type
 
 #ifndef KERNEL
