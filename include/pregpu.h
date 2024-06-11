@@ -12,7 +12,7 @@ static gpureal *sourceDevc;                                     // Sources on de
 static gpureal *targetDevc;                                     // Targets on device
 #pragma omp threadprivate(keysDevcSize,rangeDevcSize,sourceDevcSize,targetDevcSize)
 #pragma omp threadprivate(keysDevc,rangeDevc,sourceDevc,targetDevc)
-__device__ __constant__ gpureal constDevc[1];                   // Constants on device
+__device__ __constant__ gpureal constDevc[2];                   // Constants on device
 
 namespace {                                                     // Limit scope of the following functions to nvcc
 void cudaCheckError() {

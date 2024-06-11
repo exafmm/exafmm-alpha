@@ -168,34 +168,36 @@ public:
       }                                                         //  End while loop for interaction stack
     } else {                                                    // If periodic boundary condition
       int I = 0;                                                //  Initialize index of periodic image
-      for( int ix=-IMAGEDIM[0]; ix<=IMAGEDIM[0]; ++ix ) {       //  Loop over x periodic direction
-        for( int iy=-IMAGEDIM[1]; iy<=IMAGEDIM[1]; ++iy ) {     //   Loop over y periodic direction
-          for( int iz=-IMAGEDIM[2]; iz<=IMAGEDIM[2]; ++iz, ++I ) {//  Loop over z periodic direction
-            Iperiodic = 1 << I;                                 //     Set periodic image flag
-            Xperiodic[0] = ix * 2 * R0;                         //     Coordinate offset for x periodic direction
-            Xperiodic[1] = iy * 2 * R0;                         //     Coordinate offset for y periodic direction
-            Xperiodic[2] = iz * 2 * R0;                         //     Coordinate offset for z periodic direction
-            Pair pair(root,jroot);                              //     Form pair of root cells
-            pairs.push(pair);                                   //     Push pair to stack
-            while( !pairs.empty() ) {                           //     While interaction stack is not empty
-              pair = pairs.top();                               //      Get interaction pair from top of stack
-              pairs.pop();                                      //      Pop interaction stack
-              switch (method) {                                 //      Swtich between methods
-              case 0 : treecode(pair.first,pair.second); break; //      0 : treecode
-              case 1 : FMM(pair.first,pair.second);      break; //      1 : FMM
-              case 2 : hybrid(pair.first,pair.second);   break; //      2 : hybrid
-              }                                                 //      End switch between methods
-            }                                                   //     End while loop for interaction stack
+      for( int ix=-1; ix<=1; ++ix ) {                           //  Loop over x periodic direction
+        for( int iy=-1; iy<=1; ++iy ) {                         //   Loop over y periodic direction
+          for( int iz=-1; iz<=1; ++iz, ++I ) {                  //    Loop over z periodic direction
+	    if( !ix|IMAGEDIM[0] && !iy|IMAGEDIM[1] && !iz|IMAGEDIM[2] ) { // If match periodic dimension
+              Iperiodic = 1 << I;                               //      Set periodic image flag
+              Xperiodic[0] = ix * 2 * R0;                       //      Coordinate offset for x periodic direction
+              Xperiodic[1] = iy * 2 * R0;                       //      Coordinate offset for y periodic direction
+              Xperiodic[2] = iz * 2 * R0;                       //      Coordinate offset for z periodic direction
+              Pair pair(root,jroot);                            //      Form pair of root cells
+              pairs.push(pair);                                 //      Push pair to stack
+              while( !pairs.empty() ) {                         //      While interaction stack is not empty
+                pair = pairs.top();                             //       Get interaction pair from top of stack
+                pairs.pop();                                    //       Pop interaction stack
+                switch (method) {                               //       Swtich between methods
+                case 0 : treecode(pair.first,pair.second); break;//      0 : treecode
+                case 1 : FMM(pair.first,pair.second);      break;//      1 : FMM
+                case 2 : hybrid(pair.first,pair.second);   break;//      2 : hybrid
+                }                                               //       End switch between methods
+              }                                                 //      End while loop for interaction stack
+	    }                                                   //     Endif for periodic dimension
           }                                                     //    End loop over z periodic direction
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
       for( C_iter Ci=cells.begin(); Ci!=cells.end(); ++Ci ) {   //  Loop over target cells
-        listM2L[Ci-CI0].sort();                                 //  Sort interaction list
-        listM2L[Ci-CI0].unique();                               //  Eliminate duplicate periodic entries
-        listM2P[Ci-CI0].sort();                                 //  Sort interaction list
-        listM2P[Ci-CI0].unique();                               //  Eliminate duplicate periodic entries
-        listP2P[Ci-CI0].sort();                                 //  Sort interaction list
-        listP2P[Ci-CI0].unique();                               //  Eliminate duplicate periodic entries
+        listM2L[Ci-CI0].sort();                                 //   Sort interaction list
+        listM2L[Ci-CI0].unique();                               //   Eliminate duplicate periodic entries
+        listM2P[Ci-CI0].sort();                                 //   Sort interaction list
+        listM2P[Ci-CI0].unique();                               //   Eliminate duplicate periodic entries
+        listP2P[Ci-CI0].sort();                                 //   Sort interaction list
+        listP2P[Ci-CI0].unique();                               //   Eliminate duplicate periodic entries
       }                                                         //  End loop over target cells
     }                                                           // Endif for periodic boundary condition
   }

@@ -280,7 +280,20 @@ void Evaluator::evalP2P(Bodies &ibodies, Bodies &jbodies, bool onCPU) {// Evalua
   int numIcall = int(ibodies.size()-1)/MAXBODY+1;               // Number of icall loops
   int numJcall = int(jbodies.size()-1)/MAXBODY+1;               // Number of jcall loops
   int ioffset = 0;                                              // Initialzie offset for icall loops
-  Iperiodic = IMAGES == 0 ? Icenter : Iall;                     // Set periodic image flag
+  if( IMAGES == 0 ) {                                           // If free boundary condition
+    Iperiodic = Icenter;                                        //  Set periodic image flag to center
+  } else {                                                      // Else if periodic boundary condition
+    int I = 0;                                                  //  Initialize index of periodic image
+    for( int ix=-1; ix<=1; ++ix ) {                             //  Loop over x periodic direction
+      for( int iy=-1; iy<=1; ++iy ) {                           //   Loop over y periodic direction
+        for( int iz=-1; iz<=1; ++iz, ++I ) {                    //    Loop over z periodic direction
+          if( !ix|IMAGEDIM[0] && !iy|IMAGEDIM[1] && !iz|IMAGEDIM[2] ) { // If match periodic dimension
+            Iperiodic |= 1 << I;                                //      Set periodic image flag
+          }                                                     //     Endif for periodic dimension
+        }                                                       //    End loop over z periodic direction
+      }                                                         //   End loop over y periodic direction
+    }                                                           //  End loop over x periodic direction
+  }                                                             // Endif for periodic boundary condition
   for( int icall=0; icall!=numIcall; ++icall ) {                // Loop over icall
     BI0 = ibodies.begin()+ioffset;                              //  Set target bodies begin iterator
     BIN = ibodies.begin()+std::min(ioffset+MAXBODY,int(ibodies.size()));// Set target bodies end iterator

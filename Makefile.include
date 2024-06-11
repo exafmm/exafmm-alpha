@@ -6,8 +6,8 @@ CUDA_INSTALL_PATH = /usr/local/cuda
 #DEVICE  = cpu
 DEVICE  = gpu
 
-CXX     = mpicxx -g -O3 -std=c++11 -fPIC -fopenmp -Wfatal-errors -I../include
-NVCC    = nvcc -Xcompiler "-fopenmp -O3" -std=c++11 -use_fast_math -I../include
+CXX     = mpicxx -g -O3 -fPIC -fopenmp -Wfatal-errors -I../include
+NVCC    = nvcc -Xcompiler "-fopenmp -O3" -use_fast_math -I../include
 FC      = mpif90 -g -O3 -fPIC -fopenmp -I../include
 LFLAGS  = -D$(DEVICE) -lstdc++ -ldl -lm
 #LFLAGS	+= -lmpi_cxx

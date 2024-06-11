@@ -642,9 +642,12 @@ __global__ void StretchingP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
           }
         }
       } else {
-	for( int ix=-range; ix<=range; ++ix ) {
-          for( int iy=-range; iy<=range; ++iy ) {
-            for( int iz=-range; iz<=range; ++iz ) {
+        int xrange = range * ((Iperiodic & (1 << 22)) != 0);
+        int yrange = range * ((Iperiodic & (1 << 16)) != 0);
+        int zrange = range * ((Iperiodic & (1 << 14)) != 0);
+        for( int ix=-xrange; ix<=xrange; ++ix ) {
+          for( int iy=-yrange; iy<=yrange; ++iy ) {
+            for( int iz=-zrange; iz<=zrange; ++iz ) {
 	      float3 d;
               d.x = ix * D0;
               d.y = iy * D0;
@@ -689,9 +692,12 @@ __global__ void StretchingP2P_GPU(int *keysGlob, int *rangeGlob, gpureal *target
         }
       }
     } else {
-      for( int ix=-range; ix<=range; ++ix ) {
-        for( int iy=-range; iy<=range; ++iy ) {
-          for( int iz=-range; iz<=range; ++iz ) {
+      int xrange = range * ((Iperiodic & (1 << 22)) != 0);
+      int yrange = range * ((Iperiodic & (1 << 16)) != 0);
+      int zrange = range * ((Iperiodic & (1 << 14)) != 0);
+      for( int ix=-xrange; ix<=xrange; ++ix ) {
+        for( int iy=-yrange; iy<=yrange; ++iy ) {
+          for( int iz=-zrange; iz<=zrange; ++iz ) {
             float3 d;
             d.x = ix * D0;
             d.y = iy * D0;
