@@ -39,10 +39,10 @@ program main
      ud(3*i-1) = 0
      ud(3*i-0) = 0
   enddo
-  images = 0
+  images = 2
   image_dim(1) = 1
-  image_dim(2) = 1
-  image_dim(3) = 1
+  image_dim(2) = 0
+  image_dim(3) = 0
   call fmm_init(images,image_dim)
   call fmm_partition(ni,xi,nj,xj,gj)
   call fmm_biot_savart(ni,xi,ui,nj,xj,gj)
