@@ -825,29 +825,22 @@ extern "C" void fmm_biot_savart_(int & ni, double * xi, double * ui, int & nj, d
   FMM->setCommBodies(jcells);
   FMM->stopTimer("Set LET      ",printNow);
 
-  FMM->startTimer("Send LET     ");
   if( MPISIZE != 1 ) {
-#pragma omp parallel sections num_threads(2)
-    {
-#pragma omp section
-      {
-        FMM->downward(cells,jcells,1,false);
-      }
-#pragma omp section
-      {
-        FMM->updateBodies();
-      }
-    }
+    FMM->startTimer("Traversal1   ");
+    FMM->downward(cells,jcells,1,false);
+    FMM->updateBodies();
     jbodies = jbodies2;
     jcells = jcells2;
+    FMM->stopTimer("Traversal1   ",printNow);
+    FMM->startTimer("Send LET     ");
     FMM->commCells(jbodies,jcells);
     FMM->eraseLocalTree(jcells);
+    FMM->stopTimer("Send LET     ",printNow);
   }
-  FMM->stopTimer("Send LET     ",printNow);
 
-  FMM->startTimer("Traversal    ");
+  FMM->startTimer("Traversal2   ");
   FMM->downward(cells,jcells,1);
-  FMM->stopTimer("Traversal    ",printNow);
+  FMM->stopTimer("Traversal2   ",printNow);
 
   FMM->startTimer("Get bodies   ");
   B=bodies.begin();
